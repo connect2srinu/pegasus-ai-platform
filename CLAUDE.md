@@ -2,18 +2,36 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Commands
+## Running on Windows (WSL2)
 
-```bash
-# Windows: start both servers in separate WSL terminals
+**Quickstart — double-click `start.bat`** from Windows Explorer, or run from cmd:
+```bat
 start.bat
+```
+This kills any previous instances, opens two WSL terminal windows (API + frontend), waits for them to start, then opens the app in your browser automatically.
 
-# Frontend dev server (port 5174, proxies /api → 4201)
-npm run dev
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:5174 |
+| API | http://localhost:4201 |
 
-# Mock API + static server (port 4201 by default, or set PORT=)
+**Manual start (two WSL terminals):**
+```bash
+# Terminal 1 — API server
 npm run api
 
+# Terminal 2 — Frontend dev server
+npm run dev
+```
+
+**Background script (WSL only):**
+```bash
+scripts/start-dev.sh
+```
+
+## Other Commands
+
+```bash
 # Production build
 npm run build
 
@@ -21,7 +39,7 @@ npm run build
 npm run preview
 ```
 
-The frontend and mock API are run together in two terminals: `npm run dev` for Vite HMR + `npm run api` for the backend.
+The frontend proxies `/api/*` to the API server. Both must be running for the app to work.
 
 To rename the platform (default: "Pegasus"), set `VITE_PLATFORM_NAME` for the frontend and `PLATFORM_NAME` or `VITE_PLATFORM_NAME` for the mock API.
 
