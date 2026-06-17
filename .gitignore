@@ -1,0 +1,7 @@
+node_modules/
+dist/
+backend/control-plane/data/agent-registry.json
+/tmp/pegasus-*.out
+/tmp/pegasus-*.err
+.env
+.env.local
