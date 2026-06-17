@@ -1,0 +1,21 @@
+{
+  "name": "guardian-ai-platform",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "api": "node scripts/static-server.cjs",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "check": "vite build"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "js-yaml": "^4.2.0",
+    "lucide-react": "^0.561.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "vite": "^5.4.21"
+  }
+}

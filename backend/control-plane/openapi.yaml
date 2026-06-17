@@ -1,0 +1,154 @@
+openapi: 3.1.0
+info:
+  title: Guardian Control Plane API
+  version: 0.1.0
+  description: High-level API contract for Guardian agent governance.
+servers:
+  - url: https://guardian.example.com/api
+paths:
+  /projects:
+    get:
+      summary: List projects visible to the current user.
+      responses:
+        "200":
+          description: Project list.
+    post:
+      summary: Create a project.
+      responses:
+        "201":
+          description: Project created.
+  /agents:
+    get:
+      summary: List agents in the selected project.
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Agent list.
+    post:
+      summary: Register a new agent draft or submitted version.
+      responses:
+        "201":
+          description: Agent version registered.
+  /agents/{agentId}/versions/{versionId}/submit:
+    post:
+      summary: Submit an agent version for validation and approval.
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          description: Validation started.
+  /approvals:
+    get:
+      summary: List approval tasks for the current user.
+      responses:
+        "200":
+          description: Approval queue.
+  /approvals/{approvalId}/decision:
+    post:
+      summary: Approve, reject, or revoke an approval request.
+      parameters:
+        - name: approvalId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Decision recorded.
+  /deployments:
+    post:
+      summary: Deploy an approved agent version to an environment.
+      responses:
+        "202":
+          description: Deployment workflow started.
+  /tools:
+    get:
+      summary: List governed tool catalog entries.
+      responses:
+        "200":
+          description: Tool catalog.
+  /knowledge-bases:
+    get:
+      summary: List available and attached knowledge bases.
+      responses:
+        "200":
+          description: Knowledge-base catalog.
+  /secrets:
+    get:
+      summary: List secret references for a project.
+      responses:
+        "200":
+          description: Secret references.
+  /runs:
+    get:
+      summary: List runtime executions.
+      responses:
+        "200":
+          description: Run history.
+  /audit:
+    get:
+      summary: Search audit events.
+      responses:
+        "200":
+          description: Audit events.
+components:
+  schemas:
+    AgentVersion:
+      type: object
+      required:
+        - agentId
+        - version
+        - projectId
+        - lifecycleState
+      properties:
+        agentId:
+          type: string
+        version:
+          type: string
+        projectId:
+          type: string
+        lifecycleState:
+          type: string
+          enum:
+            - draft
+            - submitted
+            - security_review
+            - business_owner_review
+            - platform_admin_review
+            - approved
+            - deployed
+            - suspended
+            - retired
+            - revoked
+        agentType:
+          type: string
+          enum:
+            - bedrock_agentcore
+            - langgraph
+            - openai_agent
+            - crewai
+            - strands
+            - custom
+        runtimeTarget:
+          type: string
+        riskTier:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+            - critical
