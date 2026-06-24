@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
-    "api": "node scripts/static-server.cjs",
+    "dev": "vite",
+    "api": "HOST=0.0.0.0 node scripts/static-server.cjs",
     "build": "vite build",
-    "preview": "vite preview --host 127.0.0.1",
+    "preview": "vite preview",
     "check": "vite build"
   },
   "dependencies": {

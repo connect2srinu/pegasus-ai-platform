@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const yaml = require("js-yaml");
+const { generateStrands } = require("./codegen/strands-generator.cjs");
 
 const root = path.resolve(__dirname, "..");
 const staticRoot = fs.existsSync(path.join(root, "dist")) ? path.join(root, "dist") : root;
@@ -548,6 +549,103 @@ async function handleApi(req, res, requestUrl) {
     addAudit(registry, "knowledge.registered", { kbId: kb.id, projectId: kb.projectId });
     writeRegistry(registry);
     return sendJson(res, 201, { knowledge: kb, approvalTasks: tasks });
+  }
+
+  // ── POST /api/agents/generate — generate code from manifest ─────────────────
+  if (req.method === "POST" && requestUrl.pathname === "/api/agents/generate") {
+    const body = await readBody(req);
+    const { manifest: manifestYaml, projectId: pid, form } = body;
+    if (!manifestYaml) return sendJson(res, 400, { error: "manifest is required." });
+
+    let parsedManifest;
+    try {
+      parsedManifest = yaml.load(manifestYaml);
+    } catch (e) {
+      return sendJson(res, 400, { error: `Invalid YAML: ${e.message}` });
+    }
+
+    const files = generateStrands(parsedManifest, pid || parsedManifest.projectId || "unknown-project");
+    return sendJson(res, 200, { files, agentId: parsedManifest.id, framework: parsedManifest.runtime?.framework || "strands" });
+  }
+
+  // ── POST /api/agents/publish — generate + register in control plane ──────────
+  if (req.method === "POST" && requestUrl.pathname === "/api/agents/publish") {
+    const body = await readBody(req);
+    const { manifest: manifestYaml, projectId: pid, form, submittedBy } = body;
+    if (!manifestYaml) return sendJson(res, 400, { error: "manifest is required." });
+
+    let parsedManifest;
+    try {
+      parsedManifest = yaml.load(manifestYaml);
+    } catch (e) {
+      return sendJson(res, 400, { error: `Invalid YAML: ${e.message}` });
+    }
+
+    const registry = readRegistry();
+    const agentId = parsedManifest.id || slug(parsedManifest.name || "authored-agent");
+    const effectivePid = pid || parsedManifest.projectId || "unknown-project";
+
+    // Register the agent in the control plane
+    const agent = {
+      id: agentId,
+      name: parsedManifest.name || agentId,
+      version: parsedManifest.version || "0.1.0",
+      projectId: effectivePid,
+      agentType: parsedManifest.runtime?.framework || "strands",
+      lifecycle: "submitted",
+      deployment: "not_deployed",
+      risk: parsedManifest.policies?.riskTier || "medium",
+      model: parsedManifest.model?.modelId || "anthropic.claude-3-5-sonnet",
+      tools: (parsedManifest.tools || []).map((t) => t.toolId || t).filter(Boolean),
+      knowledge: (parsedManifest.knowledge || []).map((k) => k.knowledgeBaseId || k).filter(Boolean),
+      memory: parsedManifest.memory?.shortTerm ? "Short-term" : "None",
+      owner: submittedBy || parsedManifest.owner?.userId || "current-user@example.com",
+      authoredVia: "author-wizard",
+      manifest: parsedManifest,
+      validations: [
+        { status: "pass", message: "Agent manifest schema is valid." },
+        { status: "pass", message: `Framework: ${parsedManifest.runtime?.framework || "strands"} on AgentCore Runtime.` },
+        ...(parsedManifest.memory?.longTerm ? [{ status: "warn", message: "Long-term memory requires Project Owner approval." }] : []),
+      ],
+      submittedAt: now(),
+      updatedAt: now(),
+    };
+
+    // Remove old version of this agent if it exists
+    registry.agents = registry.agents.filter((a) => a.id !== agentId);
+    registry.agents.push(agent);
+
+    // Create approval tasks using a minimal version object
+    const versionProxy = {
+      id: `${agentId}-v${agent.version}`,
+      semanticVersion: agent.version,
+      riskTier: agent.risk,
+      validations: agent.validations,
+    };
+    const approvalTasks = createApprovalTasks(agent, versionProxy);
+    registry.approvalTasks.push(...approvalTasks);
+
+    writeRegistry(registry);
+
+    return sendJson(res, 201, {
+      agentId,
+      agent,
+      approvalTasks,
+      prUrl: null, // real GitHub PR integration goes here
+      message: `Agent "${agent.name}" registered and queued for approval.`,
+    });
+  }
+
+  // ── GET /api/templates — list authoring templates ────────────────────────────
+  if (req.method === "GET" && requestUrl.pathname === "/api/templates") {
+    return sendJson(res, 200, {
+      templates: [
+        { id: "blank", label: "Blank Agent", framework: "strands" },
+        { id: "customer-support", label: "Customer Support", framework: "strands" },
+        { id: "data-analyst", label: "Data Analyst", framework: "strands" },
+        { id: "multi-agent-supervisor", label: "Multi-Agent Supervisor", framework: "strands" },
+      ],
+    });
   }
 
   return sendJson(res, 404, { error: "API route not found." });

@@ -1071,3 +1071,251 @@ textarea {
   padding: 2px 6px;
   color: var(--violet);
 }
+
+/* ─── Author Wizard ───────────────────────────────────────────────────────── */
+
+.author-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.author-stepper {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+
+.author-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: default;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.author-step.active {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+  font-weight: 600;
+}
+
+.author-step.done {
+  color: var(--green);
+  cursor: pointer;
+}
+
+.author-step.done:hover {
+  background: var(--surface-soft);
+}
+
+.author-step-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.author-step.active .author-step-dot {
+  background: var(--blue);
+  color: #fff;
+}
+
+.author-step.done .author-step-dot {
+  background: var(--green);
+  color: #fff;
+}
+
+.author-step-content {
+  flex: 1;
+  min-height: 0;
+}
+
+.author-nav {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  margin-top: 24px;
+}
+
+/* Template grid */
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.template-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  padding: 16px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.template-card:hover {
+  border-color: var(--blue);
+  background: var(--surface-soft);
+}
+
+.template-card.selected {
+  border-color: var(--blue);
+  background: #f0f6ff;
+}
+
+.template-card strong {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.template-card p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.template-icon {
+  color: var(--blue);
+  margin-bottom: 4px;
+}
+
+.template-check {
+  font-size: 11px;
+  color: var(--blue);
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* Resource checklist (tools step) */
+.resource-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.resource-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.resource-check-item:hover {
+  border-color: var(--blue);
+  background: var(--surface-soft);
+}
+
+.resource-check-item.checked {
+  border-color: var(--blue);
+  background: #f0f6ff;
+}
+
+.resource-check-item input[type="checkbox"] {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* Author sidebar */
+.author-sidebar h2 {
+  margin-bottom: 12px;
+}
+
+.author-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.summary-row span {
+  color: var(--muted);
+}
+
+.summary-row strong {
+  color: var(--ink);
+  max-width: 55%;
+  text-align: right;
+  word-break: break-word;
+}
+
+.author-steps-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.author-summary-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* Code preview (Review step) */
+.code-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.code-preview {
+  background: #1e2329;
+  color: #e6edf3;
+  border-radius: 8px;
+  padding: 16px;
+  font-family: Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow: auto;
+  max-height: 480px;
+  white-space: pre;
+  margin: 0;
+  border: 1px solid #30363d;
+}
+
+.code-preview code {
+  background: none;
+  color: inherit;
+  font-size: inherit;
+  padding: 0;
+}
+
