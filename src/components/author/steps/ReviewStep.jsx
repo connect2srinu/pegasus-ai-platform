@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api, projectId, slugify } from "../../../utils.js";
 import { PLATFORM_SLUG } from "../../../constants.js";
 
@@ -65,8 +65,15 @@ export default function ReviewStep({ form, project, onPublished }) {
   const [publishBusy, setPublishBusy] = useState(false);
   const [error, setError] = useState("");
   const [publishResult, setPublishResult] = useState(null);
+  const [apiOnline, setApiOnline] = useState(null);
 
   const manifest = buildManifest(form, project);
+
+  useEffect(() => {
+    api("/api/health")
+      .then(() => setApiOnline(true))
+      .catch(() => setApiOnline(false));
+  }, []);
 
   async function generateCode() {
     setBusy(true);
@@ -79,13 +86,17 @@ export default function ReviewStep({ form, project, onPublished }) {
       setGeneratedCode(result.files);
       setActiveTab("code");
     } catch (err) {
-      setError(err.message);
+      setError(err.message === "Failed to fetch"
+        ? "Cannot reach the API server. Make sure it is running on port 4201 (run: npm run api)."
+        : err.message);
     } finally {
       setBusy(false);
     }
   }
 
   async function publish() {
+    if (!form.name?.trim()) { setError("Agent name is required. Go back to the Prompt step and add a name."); return; }
+    if (!form.systemPrompt?.trim()) { setError("System prompt is required. Go back to the Prompt step and add a system prompt."); return; }
     setPublishBusy(true);
     setError("");
     try {
@@ -96,7 +107,9 @@ export default function ReviewStep({ form, project, onPublished }) {
       setPublishResult(result);
       onPublished?.(result);
     } catch (err) {
-      setError(err.message);
+      setError(err.message === "Failed to fetch"
+        ? "Cannot reach the API server. Make sure it is running on port 4201 (run: npm run api)."
+        : err.message);
     } finally {
       setPublishBusy(false);
     }
@@ -109,6 +122,18 @@ export default function ReviewStep({ form, project, onPublished }) {
         Review the generated manifest and code before submitting for approval.
         Submitting registers the agent in the control plane and opens the approval workflow.
       </p>
+
+      {apiOnline === false && (
+        <div className="validation-item fail" style={{ marginBottom: 14 }}>
+          <strong>API OFFLINE</strong>
+          <span>Control Plane API is not reachable on port 4201. Start it with <code>npm run api</code> or double-click <code>start.bat</code>.</span>
+        </div>
+      )}
+      {apiOnline === true && (
+        <div className="validation-item pass" style={{ marginBottom: 14 }}>
+          <strong>API ONLINE</strong><span>Control Plane API connected — ready to submit.</span>
+        </div>
+      )}
 
       {error && <div className="validation-item fail" style={{ marginBottom: 14 }}><strong>ERROR</strong><span>{error}</span></div>}
 

@@ -363,6 +363,30 @@ function buildAgentFromSpec(spec, source = "form", submitter = spec.owner?.userI
 }
 
 function agentSummary(agent) {
+  // Authored agents (from /api/agents/publish) use a flat structure — no versions array
+  if (!agent.versions) {
+    return {
+      id: agent.id,
+      projectId: agent.projectId,
+      name: agent.name,
+      description: agent.description || "",
+      version: agent.version || "0.1.0",
+      runtime: displayAgentType(agent.agentType),
+      agentType: agent.agentType,
+      lifecycle: agent.lifecycle || "submitted",
+      deployment: agent.deployment || "not_deployed",
+      risk: agent.risk || "medium",
+      owner: agent.owner || agent.ownerUserId,
+      model: agent.model || "",
+      tools: agent.tools || [],
+      knowledge: agent.knowledge || [],
+      memory: agent.memory || "None",
+      validations: agent.validations || [],
+      approvals: agent.approvals || [],
+      updatedAt: agent.updatedAt,
+    };
+  }
+  // Register / YAML-uploaded agents: versioned structure
   const version = agent.versions[agent.versions.length - 1];
   return {
     id: agent.id,
@@ -476,11 +500,28 @@ async function handleApi(req, res, requestUrl) {
     }
 
     // Handle agent approval tasks
-    const { agent, version } = findAgentAndVersion(registry, task.agentId, task.versionId);
-    version.approvals.push({ type: task.approverType, decision: task.decision, approver: task.approver, comments: task.comments, decidedAt: task.decidedAt });
-    const versionTasks = registry.approvalTasks.filter((item) => item.versionId === task.versionId);
-    version.lifecycleState = lifecycleFromTasks(versionTasks, version.validations);
-    if (version.lifecycleState === "approved") agent.currentApprovedVersionId = version.id;
+    const agent = registry.agents.find((a) => a.id === task.agentId);
+    if (!agent) return sendJson(res, 404, { error: "Agent not found for this approval task." });
+
+    if (agent.versions) {
+      // Register / YAML-uploaded agents: versioned structure
+      const version = agent.versions.find((v) => v.id === task.versionId) || agent.versions.at(-1);
+      if (!version) return sendJson(res, 404, { error: "Agent version not found." });
+      version.approvals = version.approvals || [];
+      version.approvals.push({ type: task.approverType, decision: task.decision, approver: task.approver, comments: task.comments, decidedAt: task.decidedAt });
+      const versionTasks = registry.approvalTasks.filter((item) => item.versionId === task.versionId);
+      version.lifecycleState = lifecycleFromTasks(versionTasks, version.validations);
+      if (version.lifecycleState === "approved") agent.currentApprovedVersionId = version.id;
+    } else {
+      // Author-wizard agents: flat structure (no versions array)
+      agent.approvals = agent.approvals || [];
+      agent.approvals.push({ type: task.approverType, decision: task.decision, approver: task.approver, comments: task.comments, decidedAt: task.decidedAt });
+      const agentTasks = registry.approvalTasks.filter((item) => item.agentId === task.agentId);
+      const newLifecycle = lifecycleFromTasks(agentTasks, agent.validations || []);
+      agent.lifecycle = newLifecycle;
+      if (newLifecycle === "approved") agent.deployment = "deployed";
+    }
+
     agent.updatedAt = now();
     addAudit(registry, "approval.decided", { taskId: task.id, decision: task.decision, agentId: agent.id });
     writeRegistry(registry);
