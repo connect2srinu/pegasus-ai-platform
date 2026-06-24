@@ -92,10 +92,42 @@ function displayAgentType(type) {
   }[type] || type;
 }
 
+const SEED_ORGS = [
+  {
+    id: "acme-health",
+    name: "Acme Health",
+    description: "Healthcare AI platform — claims, billing, and member services.",
+    createdBy: "platform-admin@example.com",
+    createdAt: "2025-01-01T00:00:00Z",
+    members: [
+      { userId: "platform-admin@example.com", role: "org_admin" },
+      { userId: "priya@example.com",          role: "org_member" },
+      { userId: "marcus@example.com",          role: "org_member" },
+      { userId: "devon@example.com",           role: "org_member" },
+    ],
+    projects: [
+      { id: "claims-operations",  name: "Claims Operations",  description: "End-to-end claims processing and resolution." },
+      { id: "billing-experience", name: "Billing Experience", description: "Invoice, payment, and refund automation." },
+      { id: "member-services",    name: "Member Services",    description: "Member benefits lookup and support." },
+    ],
+  },
+  {
+    id: "acme-finance",
+    name: "Acme Finance",
+    description: "Financial services AI — risk, compliance, and advisory.",
+    createdBy: "platform-admin@example.com",
+    createdAt: "2025-02-01T00:00:00Z",
+    members: [
+      { userId: "platform-admin@example.com", role: "org_admin" },
+    ],
+    projects: [],
+  },
+];
+
 function ensureRegistry() {
   fs.mkdirSync(dataDir, { recursive: true });
   if (!fs.existsSync(registryPath)) {
-    fs.writeFileSync(registryPath, JSON.stringify({ agents: [], approvalTasks: [], audit: [], tools: [], knowledge: [] }, null, 2));
+    fs.writeFileSync(registryPath, JSON.stringify({ agents: [], approvalTasks: [], audit: [], tools: [], knowledge: [], organizations: [] }, null, 2));
   }
   const registry = JSON.parse(stripBom(fs.readFileSync(registryPath, "utf8")));
   registry.agents ||= [];
@@ -103,6 +135,11 @@ function ensureRegistry() {
   registry.audit ||= [];
   registry.tools ||= [];
   registry.knowledge ||= [];
+  registry.organizations ||= [];
+  // Seed orgs if empty
+  if (registry.organizations.length === 0) {
+    registry.organizations = SEED_ORGS;
+  }
   fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2));
 }
 
@@ -687,6 +724,90 @@ async function handleApi(req, res, requestUrl) {
         { id: "multi-agent-supervisor", label: "Multi-Agent Supervisor", framework: "strands" },
       ],
     });
+  }
+
+  // ── Organization routes ───────────────────────────────────────────────────────
+
+  // GET /api/organizations
+  if (req.method === "GET" && requestUrl.pathname === "/api/organizations") {
+    const registry = readRegistry();
+    return sendJson(res, 200, { organizations: registry.organizations || [] });
+  }
+
+  // POST /api/organizations  (Platform Admin only)
+  if (req.method === "POST" && requestUrl.pathname === "/api/organizations") {
+    const body = await readBody(req);
+    if (!body.name || body.name.trim().length < 2) return sendJson(res, 400, { error: "Organization name must be at least 2 characters." });
+    const registry = readRegistry();
+    const orgId = `${slug(body.name)}-${Date.now()}`;
+    const org = {
+      id: orgId,
+      name: body.name.trim(),
+      description: (body.description || "").trim(),
+      createdBy: body.createdBy || "platform-admin@example.com",
+      createdAt: now(),
+      members: [
+        { userId: body.createdBy || "platform-admin@example.com", role: "org_admin" },
+        ...(body.initialAdmin && body.initialAdmin !== body.createdBy
+          ? [{ userId: body.initialAdmin.trim(), role: "org_admin" }]
+          : []),
+      ],
+      projects: [],
+    };
+    registry.organizations = registry.organizations || [];
+    registry.organizations.push(org);
+    addAudit(registry, "org.created", { orgId, name: org.name, createdBy: org.createdBy });
+    writeRegistry(registry);
+    return sendJson(res, 201, { organization: org });
+  }
+
+  // GET /api/organizations/:orgId
+  if (req.method === "GET" && parts[1] === "organizations" && parts[2] && !parts[3]) {
+    const registry = readRegistry();
+    const org = (registry.organizations || []).find((o) => o.id === parts[2]);
+    if (!org) return sendJson(res, 404, { error: "Organization not found." });
+    return sendJson(res, 200, { organization: org });
+  }
+
+  // POST /api/organizations/:orgId/projects
+  if (req.method === "POST" && parts[1] === "organizations" && parts[2] && parts[3] === "projects") {
+    const body = await readBody(req);
+    if (!body.name || body.name.trim().length < 2) return sendJson(res, 400, { error: "Project name must be at least 2 characters." });
+    const registry = readRegistry();
+    const org = (registry.organizations || []).find((o) => o.id === parts[2]);
+    if (!org) return sendJson(res, 404, { error: "Organization not found." });
+    const projectId = slug(body.name);
+    if (org.projects.some((p) => p.id === projectId)) return sendJson(res, 409, { error: "A project with that name already exists in this organization." });
+    const project = {
+      id: projectId,
+      name: body.name.trim(),
+      description: (body.description || "").trim(),
+      createdBy: body.createdBy || "current-user@example.com",
+      createdAt: now(),
+    };
+    org.projects.push(project);
+    addAudit(registry, "project.created", { orgId: org.id, projectId: project.id, name: project.name });
+    writeRegistry(registry);
+    return sendJson(res, 201, { project, orgId: org.id });
+  }
+
+  // POST /api/organizations/:orgId/members
+  if (req.method === "POST" && parts[1] === "organizations" && parts[2] && parts[3] === "members") {
+    const body = await readBody(req);
+    if (!body.userId || !body.userId.includes("@")) return sendJson(res, 400, { error: "Valid user email is required." });
+    const registry = readRegistry();
+    const org = (registry.organizations || []).find((o) => o.id === parts[2]);
+    if (!org) return sendJson(res, 404, { error: "Organization not found." });
+    org.members = org.members || [];
+    const existing = org.members.find((m) => m.userId === body.userId);
+    if (existing) {
+      existing.role = body.role || "org_member";
+    } else {
+      org.members.push({ userId: body.userId.trim(), role: body.role || "org_member" });
+    }
+    addAudit(registry, "org.member.added", { orgId: org.id, userId: body.userId, role: body.role });
+    writeRegistry(registry);
+    return sendJson(res, 200, { organization: org });
   }
 
   return sendJson(res, 404, { error: "API route not found." });

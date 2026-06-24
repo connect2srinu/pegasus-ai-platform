@@ -6,6 +6,59 @@ export const PROJECT_IDS = {
   "Member Services": "member-services",
 };
 
+// Organization roles: platform_admin > org_admin > org_member
+export const ORG_ROLES = {
+  platform_admin: "Platform Admin",
+  org_admin:      "Org Admin",
+  org_member:     "Org Member",
+};
+
+// Project roles (unchanged, now scoped under an org)
+export const PROJECT_ROLES = {
+  project_owner:  "Project Owner",
+  project_writer: "Project Writer",
+  business_user:  "Business User",
+};
+
+// Seed organizations — the API returns live data; this is the in-memory fallback
+export const FALLBACK_ORGS = [
+  {
+    id: "acme-health",
+    name: "Acme Health",
+    description: "Healthcare AI platform — claims, billing, and member services.",
+    createdBy: "platform-admin@example.com",
+    createdAt: "2025-01-01T00:00:00Z",
+    members: [
+      { userId: "platform-admin@example.com", role: "org_admin" },
+      { userId: "priya@example.com",          role: "org_member" },
+      { userId: "marcus@example.com",          role: "org_member" },
+      { userId: "devon@example.com",           role: "org_member" },
+    ],
+    projects: [
+      { id: "claims-operations",  name: "Claims Operations",  description: "End-to-end claims processing and resolution." },
+      { id: "billing-experience", name: "Billing Experience", description: "Invoice, payment, and refund automation." },
+      { id: "member-services",    name: "Member Services",    description: "Member benefits lookup and support." },
+    ],
+  },
+  {
+    id: "acme-finance",
+    name: "Acme Finance",
+    description: "Financial services AI — risk, compliance, and advisory.",
+    createdBy: "platform-admin@example.com",
+    createdAt: "2025-02-01T00:00:00Z",
+    members: [
+      { userId: "platform-admin@example.com", role: "org_admin" },
+    ],
+    projects: [],
+  },
+];
+
+// Which projects belong to which org (for filtering the project picker)
+export const ORG_PROJECTS = {
+  "acme-health":   ["Claims Operations", "Billing Experience", "Member Services"],
+  "acme-finance":  [],
+};
+
 export const AGENT_TYPES = {
   bedrock_agentcore: "Bedrock AgentCore",
   langgraph: "LangGraph",
