@@ -1,6 +1,73 @@
 import { useState } from "react";
+import { Package, ChevronDown, ChevronRight } from "lucide-react";
 import { Table, Status, ApproverBadge, WorkflowPipeline } from "../shared/index.jsx";
 import { api, riskClass, titleCase } from "../../utils.js";
+import { PACKAGE_SOURCE_TYPES } from "../../constants.js";
+
+function CrewAIPackageSummary({ task }) {
+  const [open, setOpen] = useState(false);
+  const meta = task.packageMetadata;
+  if (!meta) return null;
+
+  return (
+    <div className="approval-pkg-summary">
+      <button type="button" className="approval-pkg-toggle" onClick={() => setOpen((v) => !v)}>
+        <Package size={13} />
+        <span>CrewAI package details</span>
+        {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+      </button>
+      {open && (
+        <div className="approval-pkg-body">
+          {meta.packageSourceType && (
+            <div className="approval-pkg-row">
+              <span>Source</span>
+              <code>{PACKAGE_SOURCE_TYPES[meta.packageSourceType]?.label || meta.packageSourceType}</code>
+            </div>
+          )}
+          {meta.packageLocation && (
+            <div className="approval-pkg-row">
+              <span>Location</span>
+              <code>{meta.packageLocation}</code>
+            </div>
+          )}
+          {meta.entryPoint && (
+            <div className="approval-pkg-row">
+              <span>Entry point</span>
+              <code>{meta.entryPoint} :: {meta.entryFunction || "handler"}</code>
+            </div>
+          )}
+          {meta.pythonVersion && (
+            <div className="approval-pkg-row">
+              <span>Python</span>
+              <code>{meta.pythonVersion}</code>
+            </div>
+          )}
+          {meta.declaredDependencies?.length > 0 && (
+            <div className="approval-pkg-row approval-pkg-row--deps">
+              <span>Dependencies ({meta.declaredDependencies.length})</span>
+              <div className="dep-list dep-list--compact">
+                {meta.declaredDependencies.slice(0, 6).map((d, i) => (
+                  <span key={i} className="dep-item"><code>{d}</code></span>
+                ))}
+                {meta.declaredDependencies.length > 6 && (
+                  <span className="muted" style={{ fontSize: 11 }}>+{meta.declaredDependencies.length - 6} more</span>
+                )}
+              </div>
+            </div>
+          )}
+          {task.validationSummary && (
+            <div className="approval-pkg-row">
+              <span>Validation</span>
+              <span className={`status ${task.validationSummary === "passed" ? "green" : task.validationSummary === "failed" ? "red" : "blue"}`}>
+                {titleCase(task.validationSummary.replace(/_/g, " "))}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Approvals({ approvalTasks, refreshApprovals, refreshAgents }) {
   const [comments, setComments] = useState({});
@@ -43,6 +110,8 @@ export default function Approvals({ approvalTasks, refreshApprovals, refreshAgen
               <strong>{task.agentName || task.resourceName}</strong>
               <br /><span className="muted">{task.projectId}</span>
               {task.resourceType && <><br /><span className="pill" style={{ marginTop: 4 }}>{titleCase(task.resourceType)}</span></>}
+              {task.agentType === "crewai" && <><br /><span className="pill" style={{ marginTop: 4, background: "var(--blue-light, #eff6ff)", color: "var(--blue, #2563eb)" }}>CrewAI package</span></>}
+              <CrewAIPackageSummary task={task} />
             </td>
             <td><ApproverBadge type={task.approverType} /></td>
             <td><span className={`risk ${riskClass(task.riskTier)}`}>{titleCase(task.riskTier)}</span></td>

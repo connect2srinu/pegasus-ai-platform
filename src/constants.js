@@ -126,6 +126,37 @@ export const FRAMEWORKS = [
   { id: "langgraph", label: "LangGraph (complex orchestration)" },
 ];
 
+// CrewAI external package onboarding
+export const PACKAGE_SOURCE_TYPES = {
+  upload:    { label: "Upload package (zip)",       hint: "Upload a .zip of your CrewAI project" },
+  s3:        { label: "S3 location",                hint: "s3://bucket/path/to/package.zip" },
+  git:       { label: "Git repository",             hint: "https://github.com/org/repo.git" },
+  artifact:  { label: "Artifact repository",        hint: "e.g. Artifactory or CodeArtifact URI" },
+  container: { label: "Container image (ECR URI)",  hint: "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-crew:latest" },
+};
+
+export const CREWAI_PYTHON_VERSIONS = ["3.10", "3.11", "3.12"];
+
+export const VALIDATION_TYPES = {
+  structure:  "Package Structure",
+  dependency: "Dependencies",
+  security:   "Security",
+  governance: "Governance",
+  agentcore:  "AgentCore Readiness",
+};
+
+export const VALIDATION_SEVERITY = {
+  blocking: { label: "Blocking", cls: "fail" },
+  warning:  { label: "Warning",  cls: "warn" },
+  info:     { label: "Info",     cls: "pass" },
+};
+
+export const AGENTCORE_RUNTIME_DEFAULTS = {
+  memoryMb: 2048,
+  timeoutSeconds: 300,
+  reservedEnvVars: ["AWS_REGION", "AWS_DEFAULT_REGION", "AWS_EXECUTION_ENV", "LAMBDA_TASK_ROOT"],
+};
+
 export const PLATFORM_NAME = (import.meta.env.VITE_PLATFORM_NAME || "").trim() || "Pegasus";
 export const PLATFORM_MARK = PLATFORM_NAME.trim().charAt(0).toUpperCase() || "P";
 export const PLATFORM_SLUG = PLATFORM_NAME.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "pegasus";
@@ -182,36 +213,36 @@ export const mockRuns = {
 };
 
 export const SAMPLE_YAML = `schemaVersion: ${PLATFORM_SLUG}.agent/v1
-id: claims-yaml-crew
-name: Claims YAML Crew
+id: claims-strands-agent
+name: Claims Strands Agent
 version: 0.1.0
 projectId: claims-operations
 owner:
   userId: current-user@example.com
   businessUnit: Claims Operations
-agentType: crewai
+agentType: strands
 runtime:
   target: agentcore
-  entrypoint: s3://${PLATFORM_SLUG}-artifacts/claims-yaml-crew/package.zip
+  framework: strands
 model:
   provider: bedrock
-  modelId: anthropic.claude-3-5-sonnet
+  modelId: anthropic.claude-3-5-sonnet-20241022-v2:0
 tools:
   - toolId: claim_lookup
     version: 1.0.0
-  - toolId: payment_post
-    version: 1.2.1
+  - toolId: policy_lookup
+    version: 1.0.0
 knowledge:
   - knowledgeBaseId: claims-policy-kb
 memory:
   shortTerm: true
-  longTerm: true
+  longTerm: false
+policies:
+  riskTier: medium
+  dataClassification: internal
 observability:
   arizeProject: ${PLATFORM_SLUG}-claims-operations
-  traceLevel: standard
-extensions:
-  crewai:
-    crewName: claims_yaml_crew
-    agents:
-      - intake_researcher
-      - claim_writer`;
+  traceLevel: standard`;
+
+// Projects that explicitly exclude CrewAI agents (mirrors server-side projectCatalog)
+export const CREWAI_EXCLUDED_PROJECTS = ["member-services", "Member Services"];

@@ -3,6 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const yaml = require("js-yaml");
 const { generateStrands } = require("./codegen/strands-generator.cjs");
+const { validateCrewAIPackage } = require("./validation/crewai-validator.cjs");
+const { generateAgentCoreWrapper } = require("./codegen/agentcore-wrapper-generator.cjs");
 
 const root = path.resolve(__dirname, "..");
 const staticRoot = fs.existsSync(path.join(root, "dist")) ? path.join(root, "dist") : root;
@@ -151,6 +153,239 @@ const SEED_ORGS = [
   },
 ];
 
+const SEED_AGENTS = [
+  // ── Claims Operations ────────────────────────────────────────────────────
+  {
+    id: "claims-assistant",
+    organizationId: "acme-health",
+    projectId: "claims-operations",
+    name: "Claims Assistant",
+    description: "Handles end-to-end claims intake, lookup, and resolution using policy knowledge.",
+    agentType: "strands",
+    frameworkType: "strands",
+    ownerUserId: "priya@example.com",
+    versions: [
+      {
+        id: "ver-claims-assistant-v010",
+        semanticVersion: "0.1.0",
+        agentType: "strands",
+        lifecycleState: "approved",
+        deploymentStatus: "deployed",
+        riskTier: "medium",
+        modelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        spec: {
+          tools: [{ toolId: "claim_lookup", version: "1.0.0" }, { toolId: "policy_lookup", version: "1.0.0" }],
+          knowledge: [{ knowledgeBaseId: "claims-policy-kb" }],
+          memory: { shortTerm: true, longTerm: false },
+        },
+        validations: [
+          { status: "pass", message: "Schema valid." },
+          { status: "pass", message: "Tools approved for project." },
+          { status: "pass", message: "Model approved for organization." },
+        ],
+        approvals: [
+          { type: "project_owner", decision: "approved", approver: "priya@example.com", comments: "Approved for production.", decidedAt: "2025-03-01T10:00:00Z" },
+          { type: "platform_admin", decision: "approved", approver: "platform-admin@example.com", comments: "All checks passed.", decidedAt: "2025-03-02T09:00:00Z" },
+        ],
+        submittedBy: "current-user@example.com",
+        createdAt: "2025-03-01T08:00:00Z",
+        updatedAt: "2025-03-02T09:00:00Z",
+      },
+    ],
+    currentApprovedVersionId: "ver-claims-assistant-v010",
+    createdAt: "2025-03-01T08:00:00Z",
+    updatedAt: "2025-03-02T09:00:00Z",
+  },
+  {
+    id: "claims-crew",
+    organizationId: "acme-health",
+    projectId: "claims-operations",
+    name: "Claims Processing Crew",
+    description: "External CrewAI package — multi-agent crew for complex claim adjudication workflows.",
+    agentType: "crewai",
+    frameworkType: "crewai",
+    sourceType: "external_package",
+    ownerUserId: "priya@example.com",
+    versions: [
+      {
+        id: "ver-claims-crew-v100",
+        semanticVersion: "1.0.0",
+        frameworkType: "crewai",
+        sourceType: "external_package",
+        package: {
+          packageSourceType: "s3",
+          packageLocation: "s3://pegasus-agent-artifacts-123456789012/claims-crew/v1.0.0.zip",
+          checksum: "sha256:abc123def456",
+          entryPoint: "app.py",
+          entryFunction: "handler",
+          runtimeCommand: "",
+          pythonVersion: "3.12",
+          dependencyFile: "requirements.txt",
+          declaredDependencies: ["crewai>=0.63.0", "boto3>=1.34.0", "botocore>=1.34.0", "pydantic>=2.0.0"],
+          envVars: [{ key: "CREW_LOG_LEVEL", value: "INFO" }, { key: "BEDROCK_REGION", value: "us-east-1" }],
+          secretRefs: [{ name: "sm/claims-api-key" }],
+          inputSchema: '{"type":"object","properties":{"claim_id":{"type":"string"}}}',
+          outputSchema: '{"type":"object","properties":{"decision":{"type":"string"}}}',
+          uploadedAt: "2025-04-01T10:00:00Z",
+        },
+        modelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        toolIds: ["claim_lookup"],
+        knowledgeIds: ["claims-policy-kb"],
+        validationStatus: "passed",
+        validationResults: [
+          { id: "str-1", validationType: "structure", status: "pass", severity: "info", message: "Entry point app.py declared.", checkedAt: "2025-04-01T10:05:00Z" },
+          { id: "dep-1", validationType: "dependency", status: "pass", severity: "info", message: "crewai dependency found.", checkedAt: "2025-04-01T10:05:00Z" },
+          { id: "dep-2", validationType: "dependency", status: "pass", severity: "info", message: "boto3 dependency found.", checkedAt: "2025-04-01T10:05:00Z" },
+          { id: "sec-1", validationType: "security", status: "pass", severity: "info", message: "No hardcoded AWS account IDs detected.", checkedAt: "2025-04-01T10:05:00Z" },
+          { id: "gov-1", validationType: "governance", status: "pass", severity: "info", message: "Project permits CrewAI agents.", checkedAt: "2025-04-01T10:05:00Z" },
+          { id: "gov-2", validationType: "governance", status: "pass", severity: "info", message: "All declared tools are approved in project catalog.", checkedAt: "2025-04-01T10:05:00Z" },
+          { id: "ac-1", validationType: "agentcore", status: "pass", severity: "info", message: "Entry function signature is AgentCore-compatible.", checkedAt: "2025-04-01T10:05:00Z" },
+        ],
+        generatedAgentCoreSpec: {
+          wrapperGenerated: false,
+          wrapperFile: null,
+          effectiveEntryPoint: "app.handler",
+          runtimeConfig: { memoryMb: 2048, timeoutSeconds: 300, executionRoleArn: "arn:aws:iam::123456789012:role/AgentCoreExecutionRole" },
+          modelConfig: { modelId: "anthropic.claude-3-5-sonnet-20241022-v2:0", crossAccountRoleArn: "arn:aws:iam::987654321098:role/PegasusBedrockAccess" },
+          toolGatewayConfig: [{ toolId: "claim_lookup", gatewayEndpoint: null }],
+          generatedAt: "2025-04-01T10:10:00Z",
+        },
+        lifecycleState: "approved",
+        approvalStatus: "approved",
+        deploymentStatus: "deployed",
+        riskTier: "medium",
+        spec: {
+          tools: [{ toolId: "claim_lookup", version: "1.0.0" }],
+          knowledge: [{ knowledgeBaseId: "claims-policy-kb" }],
+          memory: { shortTerm: false, longTerm: false },
+        },
+        validations: [
+          { status: "pass", message: "Package structure valid." },
+          { status: "pass", message: "All governance checks passed." },
+        ],
+        approvals: [
+          { type: "project_owner", decision: "approved", approver: "priya@example.com", comments: "Crew package reviewed and approved.", decidedAt: "2025-04-05T10:00:00Z" },
+          { type: "platform_admin", decision: "approved", approver: "platform-admin@example.com", comments: "Deployment authorized.", decidedAt: "2025-04-06T09:00:00Z" },
+        ],
+        submittedBy: "current-user@example.com",
+        deploymentId: "dep-claims-crew-seed",
+        createdAt: "2025-04-01T08:00:00Z",
+        updatedAt: "2025-04-06T09:00:00Z",
+      },
+    ],
+    currentApprovedVersionId: "ver-claims-crew-v100",
+    createdAt: "2025-04-01T08:00:00Z",
+    updatedAt: "2025-04-06T09:00:00Z",
+  },
+  // ── Member Services ──────────────────────────────────────────────────────
+  {
+    id: "benefits-strands-agent",
+    organizationId: "acme-health",
+    projectId: "member-services",
+    name: "Benefits Lookup Agent",
+    description: "Helps members find benefit details and coverage eligibility quickly.",
+    agentType: "strands",
+    frameworkType: "strands",
+    ownerUserId: "devon@example.com",
+    versions: [
+      {
+        id: "ver-benefits-strands-v010",
+        semanticVersion: "0.1.0",
+        agentType: "strands",
+        lifecycleState: "approved",
+        deploymentStatus: "deployed",
+        riskTier: "low",
+        modelId: "anthropic.claude-3-5-haiku-20241022-v1:0",
+        spec: {
+          tools: [{ toolId: "benefits_lookup", version: "1.0.0" }],
+          knowledge: [{ knowledgeBaseId: "member-benefits-kb" }],
+          memory: { shortTerm: true, longTerm: false },
+        },
+        validations: [
+          { status: "pass", message: "Schema valid." },
+          { status: "pass", message: "Tools approved for project." },
+        ],
+        approvals: [
+          { type: "project_owner", decision: "approved", approver: "devon@example.com", comments: "Approved.", decidedAt: "2025-03-10T10:00:00Z" },
+          { type: "platform_admin", decision: "approved", approver: "platform-admin@example.com", comments: "Low risk, approved.", decidedAt: "2025-03-11T09:00:00Z" },
+        ],
+        submittedBy: "current-user@example.com",
+        createdAt: "2025-03-10T08:00:00Z",
+        updatedAt: "2025-03-11T09:00:00Z",
+      },
+    ],
+    currentApprovedVersionId: "ver-benefits-strands-v010",
+    createdAt: "2025-03-10T08:00:00Z",
+    updatedAt: "2025-03-11T09:00:00Z",
+  },
+  // ── Billing Experience ───────────────────────────────────────────────────
+  {
+    id: "billing-invoice-agent",
+    organizationId: "acme-health",
+    projectId: "billing-experience",
+    name: "Invoice Assistant",
+    description: "Handles invoice lookups, payment status queries, and refund status tracking.",
+    agentType: "strands",
+    frameworkType: "strands",
+    ownerUserId: "marcus@example.com",
+    versions: [
+      {
+        id: "ver-billing-invoice-v010",
+        semanticVersion: "0.1.0",
+        agentType: "strands",
+        lifecycleState: "submitted",
+        deploymentStatus: "not_deployed",
+        riskTier: "high",
+        modelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        spec: {
+          tools: [{ toolId: "invoice_lookup", version: "1.0.0" }, { toolId: "payment_post", version: "1.2.1" }],
+          knowledge: [{ knowledgeBaseId: "billing-faq-kb" }],
+          memory: { shortTerm: true, longTerm: false },
+        },
+        validations: [
+          { status: "pass", message: "Schema valid." },
+          { status: "warn", message: "payment_post is a critical-risk tool — requires Tool Owner approval." },
+        ],
+        approvals: [],
+        submittedBy: "current-user@example.com",
+        createdAt: "2025-05-01T08:00:00Z",
+        updatedAt: "2025-05-01T08:00:00Z",
+      },
+    ],
+    currentApprovedVersionId: null,
+    createdAt: "2025-05-01T08:00:00Z",
+    updatedAt: "2025-05-01T08:00:00Z",
+  },
+];
+
+const SEED_DEPLOYMENTS = [
+  {
+    id: "dep-claims-crew-seed",
+    agentId: "claims-crew",
+    agentVersionId: "ver-claims-crew-v100",
+    runtimeProvider: "bedrock_agentcore",
+    organizationId: "acme-health",
+    projectId: "claims-operations",
+    executionAccountId: "123456789012",
+    modelAccountId: "987654321098",
+    region: "us-east-1",
+    runtimeId: "agentcore-claims-processing-crew-1712000000000",
+    runtimeArn: "arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/agentcore-claims-processing-crew-1712000000000",
+    ecrImageUri: "123456789012.dkr.ecr.us-east-1.amazonaws.com/pegasus/claims-processing-crew:1.0.0",
+    deploymentStatus: "deployed",
+    deploymentLogs: [
+      "[2025-04-06T09:00:00Z] Package retrieved from s3://pegasus-agent-artifacts-123456789012/claims-crew/v1.0.0.zip.",
+      "[2025-04-06T09:01:30Z] Docker image built and pushed to ECR.",
+      "[2025-04-06T09:03:00Z] AgentCore runtime created in us-east-1.",
+      "[2025-04-06T09:03:15Z] Cross-account model role assumed in account 987654321098.",
+      "[2025-04-06T09:03:20Z] Runtime status: ACTIVE. ARN: arn:aws:bedrock-agentcore:us-east-1:123456789012:runtime/agentcore-claims-processing-crew-1712000000000",
+    ],
+    deployedBy: "platform-admin@example.com",
+    deployedAt: "2025-04-06T09:03:20Z",
+    updatedAt: "2025-04-06T09:03:20Z",
+  },
+];
+
 function ensureRegistry() {
   fs.mkdirSync(dataDir, { recursive: true });
   if (!fs.existsSync(registryPath)) {
@@ -163,9 +398,20 @@ function ensureRegistry() {
   registry.tools ||= [];
   registry.knowledge ||= [];
   registry.organizations ||= [];
+  registry.deployments ||= [];
+  registry.awsAccountMappings ||= [];
+  registry.invocations ||= [];
   // Seed orgs if empty
   if (registry.organizations.length === 0) {
     registry.organizations = SEED_ORGS;
+  }
+  // Seed agents if empty
+  if (registry.agents.length === 0) {
+    registry.agents = SEED_AGENTS;
+  }
+  // Seed deployments if empty
+  if (registry.deployments.length === 0) {
+    registry.deployments = SEED_DEPLOYMENTS;
   }
   fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2));
 }
@@ -357,16 +603,30 @@ function createApprovalTasks(agent, version) {
   if (["high", "critical"].includes(version.riskTier)) types.push("security");
   if (version.validations.some((item) => item.type === "knowledge" && item.status === "fail")) types.push("data_owner");
   if (version.validations.some((item) => item.type === "tool" && ["warn", "fail"].includes(item.status))) types.push("tool_owner");
+  const isCrewAI = agent.frameworkType === "crewai" || agent.agentType === "crewai";
+  const packageMetadata = isCrewAI && version.package ? {
+    packageSourceType: version.package.packageSourceType,
+    packageLocation: version.package.packageLocation,
+    entryPoint: version.package.entryPoint,
+    entryFunction: version.package.entryFunction,
+    pythonVersion: version.package.pythonVersion,
+    dependencyFile: version.package.dependencyFile,
+    declaredDependencies: version.package.declaredDependencies || [],
+  } : null;
+
   return [...new Set(types)].map((type) => ({
     id: `approval-${agent.id}-${version.semanticVersion}-${type}-${Date.now()}`,
     agentId: agent.id,
     versionId: version.id,
     projectId: agent.projectId,
     agentName: agent.name,
+    agentType: agent.agentType || agent.frameworkType,
     approverType: type,
     status: "pending",
     riskTier: version.riskTier,
     reason: reasonFor(type),
+    packageMetadata,
+    validationSummary: isCrewAI ? (version.validationStatus || null) : null,
     createdAt: now(),
     decidedAt: null,
     decision: null,
@@ -848,6 +1108,372 @@ async function handleApi(req, res, requestUrl) {
     addAudit(registry, "org.member.added", { orgId: org.id, userId: body.userId, role: body.role });
     writeRegistry(registry);
     return sendJson(res, 200, { organization: org });
+  }
+
+  // ── CrewAI external package routes ───────────────────────────────────────────
+
+  // POST /api/agents/crewai — create agent + initial version draft from package metadata
+  if (req.method === "POST" && requestUrl.pathname === "/api/agents/crewai") {
+    const body = await readBody(req);
+    if (!body.name || body.name.trim().length < 2) return sendJson(res, 400, { error: "Agent name must be at least 2 characters." });
+    if (!body.projectId) return sendJson(res, 400, { error: "projectId is required." });
+    if (!body.organizationId) return sendJson(res, 400, { error: "organizationId is required." });
+
+    const registry = readRegistry();
+
+    // Resolve org for governance checks
+    const org = (registry.organizations || []).find((o) => o.id === body.organizationId);
+    if (!org) return sendJson(res, 404, { error: "Organization not found." });
+
+    // Warn but allow if project doesn't allow crewai (governance check runs in validate step)
+    const agentId = `${slug(body.name)}-${Date.now()}`;
+    const versionId = `ver-${agentId}-v${(body.version || "1.0.0").replace(/\./g, "")}`;
+
+    const packageData = {
+      packageSourceType: body.packageSourceType || null,
+      packageLocation: body.packageLocation || null,
+      checksum: null,
+      entryPoint: body.entryPoint || "",
+      entryFunction: body.entryFunction || "handler",
+      runtimeCommand: body.runtimeCommand || "",
+      pythonVersion: body.pythonVersion || "3.12",
+      dependencyFile: body.dependencyFile || "requirements.txt",
+      declaredDependencies: body.declaredDependencies || [],
+      envVars: body.envVars || [],
+      secretRefs: body.secretRefs || [],
+      inputSchema: body.inputSchema || null,
+      outputSchema: body.outputSchema || null,
+      uploadedAt: now(),
+    };
+
+    const version = {
+      id: versionId,
+      semanticVersion: body.version || "1.0.0",
+      frameworkType: "crewai",
+      sourceType: "external_package",
+      package: packageData,
+      modelId: body.modelId || null,
+      toolIds: body.toolIds || [],
+      knowledgeIds: body.knowledgeIds || [],
+      validationStatus: "pending",
+      validationResults: [],
+      generatedAgentCoreSpec: null,
+      lifecycleState: "draft",
+      approvalStatus: "not_submitted",
+      deploymentStatus: "not_deployed",
+      riskTier: body.riskTier || "medium",
+      spec: {
+        tools: (body.toolIds || []).map((t) => ({ toolId: t, version: "1.0.0" })),
+        knowledge: (body.knowledgeIds || []).map((k) => ({ knowledgeBaseId: k })),
+        memory: { shortTerm: false, longTerm: false },
+      },
+      validations: [],
+      approvals: [],
+      submittedBy: body.submittedBy || "current-user@example.com",
+      createdAt: now(),
+      updatedAt: now(),
+    };
+
+    const agent = {
+      id: agentId,
+      organizationId: body.organizationId,
+      projectId: body.projectId,
+      name: body.name.trim(),
+      description: body.description || "",
+      frameworkType: "crewai",
+      sourceType: "external_package",
+      agentType: "crewai",
+      ownerUserId: body.submittedBy || "current-user@example.com",
+      versions: [version],
+      currentApprovedVersionId: null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+
+    // Check for duplicate
+    if (registry.agents.some((a) => a.id === agentId && a.projectId === body.projectId)) {
+      return sendJson(res, 409, { error: "An agent with that name already exists in this project." });
+    }
+
+    registry.agents.push(agent);
+    addAudit(registry, "crewai.agent.created", { agentId, projectId: body.projectId, organizationId: body.organizationId, versionId });
+    writeRegistry(registry);
+
+    return sendJson(res, 201, { agent: agentSummary(agent), version, message: `CrewAI agent '${agent.name}' created as draft. Run package validation before submitting for approval.` });
+  }
+
+  // POST /api/agents/:agentId/versions/:versionId/validate — run validation pipeline
+  if (req.method === "POST" && parts[1] === "agents" && parts[3] === "versions" && parts[5] === "validate") {
+    const registry = readRegistry();
+    const agent = registry.agents.find((a) => a.id === parts[2]);
+    if (!agent) return sendJson(res, 404, { error: "Agent not found." });
+    const version = (agent.versions || []).find((v) => v.id === parts[4]) || (agent.versions || []).at(-1);
+    if (!version) return sendJson(res, 404, { error: "Agent version not found." });
+
+    // Resolve org config
+    const org = (registry.organizations || []).find((o) => o.id === agent.organizationId);
+    const orgConfig = org?.awsConfig || null;
+
+    // Build package descriptor for validator
+    const pkg = {
+      ...version.package,
+      projectId: agent.projectId,
+      modelId: version.modelId,
+      toolIds: version.toolIds || [],
+    };
+
+    const { validationResults, validationStatus } = validateCrewAIPackage(pkg, projectCatalog, orgConfig);
+
+    version.validationResults = validationResults;
+    version.validationStatus = validationStatus;
+    // Mirror into validations[] for agentSummary compatibility
+    version.validations = validationResults.map((r) => ({ status: r.status, message: r.message }));
+    version.updatedAt = now();
+    agent.updatedAt = now();
+
+    addAudit(registry, "crewai.package.validated", { agentId: agent.id, versionId: version.id, validationStatus });
+    writeRegistry(registry);
+
+    return sendJson(res, 200, { validationStatus, validationResults, versionId: version.id });
+  }
+
+  // GET /api/agents/:agentId/versions/:versionId/validation-results
+  if (req.method === "GET" && parts[1] === "agents" && parts[3] === "versions" && parts[5] === "validation-results") {
+    const registry = readRegistry();
+    const agent = registry.agents.find((a) => a.id === parts[2]);
+    if (!agent) return sendJson(res, 404, { error: "Agent not found." });
+    const version = (agent.versions || []).find((v) => v.id === parts[4]) || (agent.versions || []).at(-1);
+    if (!version) return sendJson(res, 404, { error: "Version not found." });
+    return sendJson(res, 200, { validationResults: version.validationResults || [], validationStatus: version.validationStatus || "pending" });
+  }
+
+  // POST /api/agents/:agentId/versions/:versionId/generate-spec — generate AgentCore spec + wrapper
+  if (req.method === "POST" && parts[1] === "agents" && parts[3] === "versions" && parts[5] === "generate-spec") {
+    const registry = readRegistry();
+    const agent = registry.agents.find((a) => a.id === parts[2]);
+    if (!agent) return sendJson(res, 404, { error: "Agent not found." });
+    const version = (agent.versions || []).find((v) => v.id === parts[4]) || (agent.versions || []).at(-1);
+    if (!version) return sendJson(res, 404, { error: "Version not found." });
+
+    if (version.validationStatus === "failed") {
+      return sendJson(res, 422, { error: "Cannot generate AgentCore spec: package validation has blocking failures. Fix them and re-validate." });
+    }
+    if (!version.validationStatus || version.validationStatus === "pending") {
+      return sendJson(res, 422, { error: "Package must be validated before generating the AgentCore spec." });
+    }
+
+    const org = (registry.organizations || []).find((o) => o.id === agent.organizationId);
+    const orgConfig = org?.awsConfig || {};
+
+    const manifest = {
+      ...version.package,
+      modelId: version.modelId,
+      toolIds: version.toolIds || [],
+      executionRoleArn: orgConfig.executionAccount?.agentCoreExecutionRoleArn || null,
+      crossAccountRoleArn: orgConfig.modelAccount?.crossAccountRoleArn || null,
+    };
+
+    const { files, agentCoreSpec } = generateAgentCoreWrapper(manifest);
+
+    version.generatedAgentCoreSpec = agentCoreSpec;
+    version.generatedFiles = files;
+    version.updatedAt = now();
+    agent.updatedAt = now();
+
+    addAudit(registry, "crewai.agentcore_spec.generated", { agentId: agent.id, versionId: version.id, wrapperGenerated: agentCoreSpec.wrapperGenerated });
+    writeRegistry(registry);
+
+    return sendJson(res, 200, { agentCoreSpec, files, versionId: version.id, message: "AgentCore deployment spec generated." + (agentCoreSpec.wrapperGenerated ? " Wrapper file agentcore_wrapper.py will be included in the deployment package." : "") });
+  }
+
+  // GET /api/agents/:agentId/versions/:versionId
+  if (req.method === "GET" && parts[1] === "agents" && parts[3] === "versions" && parts[4] && !parts[5]) {
+    const registry = readRegistry();
+    const agent = registry.agents.find((a) => a.id === parts[2]);
+    if (!agent) return sendJson(res, 404, { error: "Agent not found." });
+    const version = (agent.versions || []).find((v) => v.id === parts[4]) || (agent.versions || []).at(-1);
+    if (!version) return sendJson(res, 404, { error: "Version not found." });
+    return sendJson(res, 200, { version, agent: agentSummary(agent) });
+  }
+
+  // POST /api/agents/:agentId/versions/:versionId/submit — submit for approval (draft → submitted)
+  if (req.method === "POST" && parts[1] === "agents" && parts[3] === "versions" && parts[5] === "submit") {
+    const registry = readRegistry();
+    const agent = registry.agents.find((a) => a.id === parts[2]);
+    if (!agent) return sendJson(res, 404, { error: "Agent not found." });
+    const version = (agent.versions || []).find((v) => v.id === parts[4]) || (agent.versions || []).at(-1);
+    if (!version) return sendJson(res, 404, { error: "Version not found." });
+
+    if (version.validationStatus === "failed") {
+      return sendJson(res, 422, { error: "Cannot submit: package has blocking validation failures." });
+    }
+    if (!version.validationStatus || version.validationStatus === "pending") {
+      return sendJson(res, 422, { error: "Package must be validated before submission." });
+    }
+    if (!version.generatedAgentCoreSpec) {
+      return sendJson(res, 422, { error: "AgentCore spec must be generated before submission. Call /generate-spec first." });
+    }
+    if (version.lifecycleState !== "draft") {
+      return sendJson(res, 409, { error: `Version is already in state '${version.lifecycleState}'. Only draft versions can be submitted.` });
+    }
+
+    const body = await readBody(req);
+    version.lifecycleState = "submitted";
+    version.approvalStatus = "pending";
+    version.submittedBy = body.submittedBy || version.submittedBy || "current-user@example.com";
+    version.submittedAt = now();
+    version.updatedAt = now();
+    agent.updatedAt = now();
+
+    // Create approval tasks
+    const tasks = createApprovalTasks(agent, version);
+    registry.approvalTasks.push(...tasks);
+
+    addAudit(registry, "crewai.version.submitted", { agentId: agent.id, versionId: version.id, submittedBy: version.submittedBy });
+    writeRegistry(registry);
+
+    return sendJson(res, 200, { version, approvalTasks: tasks, agent: agentSummary(agent), message: `Version ${version.semanticVersion} submitted for approval.` });
+  }
+
+  // POST /api/agents/:agentId/versions/:versionId/deploy — deploy approved version
+  if (req.method === "POST" && parts[1] === "agents" && parts[3] === "versions" && parts[5] === "deploy") {
+    const registry = readRegistry();
+    const agent = registry.agents.find((a) => a.id === parts[2]);
+    if (!agent) return sendJson(res, 404, { error: "Agent not found." });
+    const version = (agent.versions || []).find((v) => v.id === parts[4]) || (agent.versions || []).at(-1);
+    if (!version) return sendJson(res, 404, { error: "Version not found." });
+
+    if (version.lifecycleState !== "approved") {
+      return sendJson(res, 422, { error: `Deployment blocked: version lifecycle state is '${version.lifecycleState}'. Only approved versions can be deployed.` });
+    }
+
+    const org = (registry.organizations || []).find((o) => o.id === agent.organizationId);
+    const orgConfig = org?.awsConfig;
+    if (!orgConfig?.executionAccount?.accountId) {
+      return sendJson(res, 422, { error: "Deployment blocked: organization AWS accounts are not configured." });
+    }
+
+    const body = await readBody(req);
+    const deploymentId = `dep-${agent.id}-${Date.now()}`;
+    const fakeRuntimeId = `agentcore-${slug(agent.name)}-${Date.now()}`;
+    const fakeArn = `arn:aws:bedrock-agentcore:${orgConfig.executionAccount.region}:${orgConfig.executionAccount.accountId}:runtime/${fakeRuntimeId}`;
+
+    const deployment = {
+      id: deploymentId,
+      agentId: agent.id,
+      agentVersionId: version.id,
+      runtimeProvider: "bedrock_agentcore",
+      organizationId: agent.organizationId,
+      projectId: agent.projectId,
+      executionAccountId: orgConfig.executionAccount.accountId,
+      modelAccountId: orgConfig.modelAccount.accountId,
+      region: orgConfig.executionAccount.region,
+      runtimeId: fakeRuntimeId,
+      runtimeArn: fakeArn,
+      ecrImageUri: `${orgConfig.executionAccount.ecrRepositoryPrefix}/${slug(agent.name)}:${version.semanticVersion}`,
+      deploymentStatus: "deployed",
+      deploymentLogs: [
+        `[${now()}] Package retrieved from ${version.package?.packageLocation || "upload"}.`,
+        `[${now()}] Docker image built and pushed to ECR.`,
+        `[${now()}] AgentCore runtime created in ${orgConfig.executionAccount.region}.`,
+        `[${now()}] Cross-account model role assumed in account ${orgConfig.modelAccount.accountId}.`,
+        `[${now()}] Runtime status: ACTIVE. ARN: ${fakeArn}`,
+      ],
+      deployedBy: body.deployedBy || "platform-admin@example.com",
+      deployedAt: now(),
+      updatedAt: now(),
+    };
+
+    registry.deployments = registry.deployments || [];
+    registry.deployments.push(deployment);
+
+    version.deploymentStatus = "deployed";
+    version.lifecycleState = "deployed";
+    version.deploymentId = deploymentId;
+    version.updatedAt = now();
+    agent.currentApprovedVersionId = version.id;
+    agent.updatedAt = now();
+
+    addAudit(registry, "crewai.version.deployed", { agentId: agent.id, versionId: version.id, deploymentId, runtimeArn: fakeArn });
+    writeRegistry(registry);
+
+    return sendJson(res, 200, { deployment, agent: agentSummary(agent), message: `Agent '${agent.name}' deployed successfully to AgentCore Runtime.` });
+  }
+
+  // GET /api/agents/:agentId/deployments
+  if (req.method === "GET" && parts[1] === "agents" && parts[3] === "deployments" && !parts[4]) {
+    const registry = readRegistry();
+    const deployments = (registry.deployments || []).filter((d) => d.agentId === parts[2]);
+    return sendJson(res, 200, { deployments });
+  }
+
+  // GET /api/deployments/:deploymentId
+  if (req.method === "GET" && parts[1] === "deployments" && parts[2] && !parts[3]) {
+    const registry = readRegistry();
+    const deployment = (registry.deployments || []).find((d) => d.id === parts[2]);
+    if (!deployment) return sendJson(res, 404, { error: "Deployment not found." });
+    return sendJson(res, 200, { deployment });
+  }
+
+  // ── POST /api/agents/:agentId/invoke — invoke deployed CrewAI agent via AgentCore ARN ──
+  if (req.method === "POST" && parts[1] === "agents" && parts[3] === "invoke" && !parts[4]) {
+    const registry = readRegistry();
+    const agent = registry.agents.find((a) => a.id === parts[2]);
+    if (!agent) return sendJson(res, 404, { error: "Agent not found." });
+
+    // Find the active deployment
+    const deployment = (registry.deployments || [])
+      .filter((d) => d.agentId === agent.id && d.deploymentStatus === "deployed")
+      .sort((a, b) => new Date(b.deployedAt) - new Date(a.deployedAt))[0];
+
+    if (!deployment) {
+      return sendJson(res, 422, { error: "No active deployment found for this agent. Deploy the approved version first." });
+    }
+
+    const body = await readBody(req);
+    const inputPayload = body.inputs || body.input || body.payload || {};
+    const invokedBy = body.invokedBy || "current-user@example.com";
+
+    // Simulate AgentCore runtime invocation via stored ARN
+    const runId = `run-${agent.id}-${Date.now()}`;
+    const fakeOutput = {
+      result: `[Simulated AgentCore response] Crew processed input: ${JSON.stringify(inputPayload).slice(0, 120)}`,
+      crewOutput: "Task completed successfully by the crew.",
+      agentUsed: agent.name,
+      runtimeArn: deployment.runtimeArn,
+    };
+
+    const invocationRecord = {
+      id: runId,
+      agentId: agent.id,
+      agentName: agent.name,
+      deploymentId: deployment.id,
+      runtimeArn: deployment.runtimeArn,
+      invokedBy,
+      inputs: inputPayload,
+      output: fakeOutput,
+      status: "Success",
+      durationMs: Math.floor(Math.random() * 8000) + 2000,
+      inputTokens: Math.floor(Math.random() * 4000) + 800,
+      outputTokens: Math.floor(Math.random() * 1200) + 200,
+      model: agent.model || "anthropic.claude-3-5-sonnet-20241022-v2:0",
+      startedAt: now(),
+      completedAt: now(),
+    };
+
+    registry.invocations = registry.invocations || [];
+    registry.invocations.unshift(invocationRecord);
+    addAudit(registry, "crewai.agent.invoked", { runId, agentId: agent.id, runtimeArn: deployment.runtimeArn, invokedBy });
+    writeRegistry(registry);
+
+    return sendJson(res, 200, { runId, output: fakeOutput, invocation: invocationRecord, runtimeArn: deployment.runtimeArn });
+  }
+
+  // GET /api/agents/:agentId/invocations — list invocation history
+  if (req.method === "GET" && parts[1] === "agents" && parts[3] === "invocations" && !parts[4]) {
+    const registry = readRegistry();
+    const invocations = (registry.invocations || []).filter((i) => i.agentId === parts[2]);
+    return sendJson(res, 200, { invocations });
   }
 
   return sendJson(res, 404, { error: "API route not found." });

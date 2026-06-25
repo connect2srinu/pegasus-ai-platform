@@ -316,7 +316,7 @@ export default function App() {
               ) : screen === "author" ? (
                 <AuthorAgent {...sharedProps} {...refreshProps} selectedOrg={selectedOrg} />
               ) : screen === "register" ? (
-                <RegisterAgent {...sharedProps} {...refreshProps} selectAgent={setSelectedAgentId} />
+                <RegisterAgent {...sharedProps} {...refreshProps} selectAgent={setSelectedAgentId} orgs={orgs} />
               ) : screen === "approvals" ? (
                 <Approvals approvalTasks={approvalTasks} {...refreshProps} />
               ) : screen === "tools" ? (
