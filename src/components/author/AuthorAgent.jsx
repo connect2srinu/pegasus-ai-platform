@@ -3,6 +3,7 @@ import TemplateStep from "./steps/TemplateStep.jsx";
 import PromptStep from "./steps/PromptStep.jsx";
 import ToolsStep from "./steps/ToolsStep.jsx";
 import ConfigStep from "./steps/ConfigStep.jsx";
+import DeployStep from "./steps/DeployStep.jsx";
 import ReviewStep from "./steps/ReviewStep.jsx";
 
 const STEPS = [
@@ -10,6 +11,7 @@ const STEPS = [
   { id: "prompt", label: "Prompt" },
   { id: "tools", label: "Tools" },
   { id: "config", label: "Config" },
+  { id: "deploy", label: "Deploy Target" },
   { id: "review", label: "Review" },
 ];
 
@@ -35,7 +37,7 @@ const INITIAL_FORM = {
   humanApprovalRequired: false,
 };
 
-export default function AuthorAgent({ project, tools, knowledge, setScreen, refreshAgents, refreshApprovals }) {
+export default function AuthorAgent({ project, tools, knowledge, setScreen, refreshAgents, refreshApprovals, selectedOrg }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState(INITIAL_FORM);
 
@@ -55,7 +57,7 @@ export default function AuthorAgent({ project, tools, knowledge, setScreen, refr
     setTimeout(() => setScreen("approvals"), 1200);
   }
 
-  const stepProps = { form, onChange, project, tools, knowledge };
+  const stepProps = { form, onChange, project, tools, knowledge, org: selectedOrg };
 
   return (
     <div className="split">
@@ -81,23 +83,24 @@ export default function AuthorAgent({ project, tools, knowledge, setScreen, refr
           {stepIndex === 1 && <PromptStep {...stepProps} />}
           {stepIndex === 2 && <ToolsStep {...stepProps} />}
           {stepIndex === 3 && <ConfigStep {...stepProps} />}
-          {stepIndex === 4 && <ReviewStep {...stepProps} onPublished={handlePublished} />}
+          {stepIndex === 4 && <DeployStep org={selectedOrg} />}
+          {stepIndex === 5 && <ReviewStep {...stepProps} onPublished={handlePublished} />}
         </div>
 
         {/* Navigation */}
-        {stepIndex < 4 && (
+        {stepIndex < 5 && (
           <div className="toolbar author-nav">
             <button className="secondary" type="button" onClick={() => stepIndex > 0 ? setStepIndex(stepIndex - 1) : setScreen("workspace")}>
               {stepIndex === 0 ? "Cancel" : "Back"}
             </button>
             <button className="primary" type="button" onClick={() => setStepIndex(stepIndex + 1)} disabled={!canAdvance()}>
-              {stepIndex === 3 ? "Review →" : "Next →"}
+              {stepIndex === 4 ? "Review →" : "Next →"}
             </button>
           </div>
         )}
-        {stepIndex === 4 && (
+        {stepIndex === 5 && (
           <div className="toolbar author-nav">
-            <button className="secondary" type="button" onClick={() => setStepIndex(3)}>Back</button>
+            <button className="secondary" type="button" onClick={() => setStepIndex(4)}>Back</button>
             <button className="secondary" type="button" onClick={() => setScreen("workspace")}>Back to Workspace</button>
           </div>
         )}
@@ -121,11 +124,13 @@ export default function AuthorAgent({ project, tools, knowledge, setScreen, refr
         <div style={{ marginTop: 20 }}>
           <h2>What happens next</h2>
           <ol className="author-steps-list">
-            <li>Manifest YAML is generated from your inputs</li>
-            <li>Strands agent code is generated and packaged</li>
-            <li>Agent is registered in the control plane</li>
-            <li>Approval tasks are created for project owner and platform admin</li>
-            <li>On approval, agent is deployed to AgentCore Runtime</li>
+            <li>Manifest YAML generated from your inputs</li>
+            <li>Strands agent code generated and packaged</li>
+            <li>Agent registered in the control plane</li>
+            <li>Approval tasks sent to project owner and platform admin</li>
+            <li>On final approval: Docker image built → pushed to ECR</li>
+            <li>AgentCore runtime created in {selectedOrg?.awsConfig?.executionAccount?.accountId ? <strong>{selectedOrg.awsConfig.executionAccount.accountId}</strong> : "execution account"}</li>
+            <li>Bedrock invoked cross-account from {selectedOrg?.awsConfig?.modelAccount?.accountId ? <strong>{selectedOrg.awsConfig.modelAccount.accountId}</strong> : "model account"}</li>
           </ol>
         </div>
 

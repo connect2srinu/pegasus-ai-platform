@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(///wsl.localhost/ubuntu/home/sgadire1/projects/claude-code/**)",
+      "Bash(dir \"\\\\\\\\\\\\\\\\wsl.localhost\\\\\\\\ubuntu\\\\\\\\home\\\\\\\\sgadire1\\\\\\\\projects\\\\\\\\claude-code\\\\\\\\guardian-ai-platform\")",
+      "Bash(cat \"\\\\\\\\\\\\\\\\wsl.localhost\\\\\\\\ubuntu\\\\\\\\home\\\\\\\\sgadire1\\\\\\\\projects\\\\\\\\claude-code\\\\\\\\guardian-ai-platform\\\\\\\\package.json\")",
+      "Bash(dir /s /b \"\\\\\\\\\\\\\\\\wsl.localhost\\\\\\\\ubuntu\\\\\\\\home\\\\\\\\sgadire1\\\\\\\\projects\\\\\\\\claude-code\\\\\\\\guardian-ai-platform\\\\\\\\src\")",
+      "Bash(dir /s /b \"\\\\\\\\\\\\\\\\wsl.localhost\\\\\\\\ubuntu\\\\\\\\home\\\\\\\\sgadire1\\\\\\\\projects\\\\\\\\claude-code\\\\\\\\guardian-ai-platform\\\\\\\\backend\")",
+      "Read(///wsl.localhost/ubuntu/home/sgadire1/projects/claude-code/guardian-ai-platform/**)",
+      "Read(///wsl.localhost/ubuntu/home/sgadire1/projects/claude-code/guardian-ai-platform/scripts/**)",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "Bash(pkill -f \"static-server.cjs\")",
+      "Bash(pkill -f \"vite\")",
+      "Bash(wsl -e bash -c \"pkill -f 'static-server.cjs' 2>/dev/null; pkill -f 'vite' 2>/dev/null; echo killed\")",
+      "PowerShell(wsl -d ubuntu -e bash -c \"pkill -f 'static-server.cjs'; pkill -f 'vite'; echo killed\")"
+    ]
+  }
+}

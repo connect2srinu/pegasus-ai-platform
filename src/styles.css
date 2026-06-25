@@ -1573,3 +1573,141 @@ textarea {
 /* Role explainer table in CreateOrg */
 .role-explainer h4 { margin: 0 0 4px; font-size: 13px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 
+/* ── AWS Account Configuration (CreateOrg + OrgDetail) ───────────── */
+
+.required { color: var(--accent, var(--blue)); }
+.section-label { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 14px; }
+
+/* CreateOrg AWS section */
+.create-org-form { max-width: 760px; }
+.aws-config-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.aws-config-body { display: flex; flex-direction: column; gap: 0; }
+
+.aws-account-block { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+.aws-section-header {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; background: var(--surface-soft);
+  border: none; padding: 12px 14px;
+  cursor: pointer; text-align: left;
+  font-size: 13px; color: var(--ink);
+}
+.aws-section-header:hover { background: #eef2f7; }
+.aws-section-icon {
+  width: 30px; height: 30px; border-radius: 6px;
+  background: #e8f0fe; color: var(--blue);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.aws-section-title { flex: 1; }
+.aws-section-title strong { display: block; font-size: 13px; }
+.aws-section-title .muted { font-size: 11px; }
+
+.aws-account-fields { padding: 16px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
+
+.model-checklist { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.arn-input { font-family: "Consolas", "Monaco", monospace; font-size: 12px; }
+
+.aws-network-section { background: var(--surface-soft); border-radius: 6px; padding: 12px; }
+
+.trust-explainer { background: var(--surface-soft); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+.trust-explainer h4 { margin: 0 0 8px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* OrgDetail AWS Config tab */
+.tab-warn-dot {
+  display: inline-block; width: 7px; height: 7px;
+  background: var(--amber); border-radius: 50%; margin-left: 5px; vertical-align: middle;
+}
+
+.aws-config-status {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; background: #f0faf5;
+  border: 1px solid #c3e6d3; border-radius: 8px;
+  font-size: 13px; color: var(--green); margin-bottom: 20px;
+}
+
+.aws-account-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 860px) { .aws-account-cards { grid-template-columns: 1fr; } }
+
+.aws-account-card {
+  border-radius: 10px; border: 1px solid var(--line);
+  overflow: hidden;
+}
+.aws-account-card--blue { border-top: 3px solid var(--blue); }
+.aws-account-card--violet { border-top: 3px solid var(--violet); }
+
+.aws-account-card-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; background: var(--surface-soft);
+  border-bottom: 1px solid var(--line);
+}
+.aws-account-card-header h4 { margin: 0; font-size: 13px; }
+.aws-account-card-header .muted { font-size: 11px; }
+
+.aws-account-card-icon {
+  width: 32px; height: 32px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.aws-account-card-icon--blue { background: #e8f0fe; color: var(--blue); }
+.aws-account-card-icon--violet { background: #ede9f7; color: var(--violet); }
+
+.aws-config-row {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 16px; border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.aws-config-row:last-child { border-bottom: none; }
+.aws-config-label { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.aws-config-value { color: var(--ink); word-break: break-all; }
+.aws-config-value.mono { font-family: "Consolas", "Monaco", monospace; font-size: 11px; }
+.model-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+
+/* Trust flow diagram */
+.trust-flow {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 10px; flex-wrap: wrap;
+}
+.trust-node {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px; border-radius: 8px;
+  font-size: 12px; line-height: 1.4;
+}
+.trust-node--blue { background: #e8f0fe; color: var(--blue); border: 1px solid #c5d9f7; }
+.trust-node--violet { background: #ede9f7; color: var(--violet); border: 1px solid #d5caf0; }
+.trust-arrow { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+
+/* ── Deploy Target step (author wizard) ──────────────────────────── */
+
+.deploy-account-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+@media (max-width: 720px) { .deploy-account-grid { grid-template-columns: 1fr; } }
+
+.deploy-account-card {
+  border-radius: 10px; border: 1px solid var(--line); overflow: hidden;
+}
+.deploy-account-card--blue { border-top: 3px solid var(--blue); }
+.deploy-account-card--violet { border-top: 3px solid var(--violet); }
+
+.deploy-account-card-header {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; background: var(--surface-soft);
+  border-bottom: 1px solid var(--line);
+}
+.deploy-account-card-header strong { display: block; font-size: 13px; }
+.deploy-account-card-header .muted { font-size: 11px; }
+
+.deploy-account-icon {
+  width: 30px; height: 30px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;
+}
+.deploy-account-icon--blue { background: #e8f0fe; color: var(--blue); }
+.deploy-account-icon--violet { background: #ede9f7; color: var(--violet); }
+
+.deploy-config-lines { padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+.deploy-config-line { display: flex; flex-direction: column; gap: 1px; }
+.deploy-config-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.deploy-config-value { font-family: "Consolas", "Monaco", monospace; font-size: 11px; color: var(--ink); word-break: break-all; }
+
+.deploy-flow-explainer { background: var(--surface-soft); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+.deploy-flow-explainer h4 { margin: 0 0 10px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* field-label helper */
+.field-label { font-size: 12px; font-weight: 600; color: var(--ink); margin: 0 0 6px; display: block; }
+

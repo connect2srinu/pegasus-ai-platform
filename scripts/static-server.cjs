@@ -110,6 +110,32 @@ const SEED_ORGS = [
       { id: "billing-experience", name: "Billing Experience", description: "Invoice, payment, and refund automation." },
       { id: "member-services",    name: "Member Services",    description: "Member benefits lookup and support." },
     ],
+    awsConfig: {
+      modelAccount: {
+        accountId: "987654321098",
+        region: "us-east-1",
+        label: "Acme Health – Bedrock Model Account",
+        crossAccountRoleArn: "arn:aws:iam::987654321098:role/PegasusBedrockAccess",
+        allowedModelIds: [
+          "anthropic.claude-3-5-sonnet-20241022-v2:0",
+          "anthropic.claude-3-5-haiku-20241022-v1:0",
+          "amazon.nova-pro-v1:0",
+        ],
+      },
+      executionAccount: {
+        accountId: "123456789012",
+        region: "us-east-1",
+        label: "Acme Health – AgentCore Execution Account",
+        agentCoreExecutionRoleArn: "arn:aws:iam::123456789012:role/AgentCoreExecutionRole",
+        ecrRepositoryPrefix: "123456789012.dkr.ecr.us-east-1.amazonaws.com/pegasus",
+        s3ArtifactBucket: "pegasus-agent-artifacts-123456789012",
+        networkConfig: {
+          vpcId: "vpc-0abc1234def56789a",
+          subnetIds: "subnet-0aa1111bbb222333c, subnet-0dd4444eee555666f",
+          securityGroupIds: "sg-0abc123def456789a",
+        },
+      },
+    },
   },
   {
     id: "acme-finance",
@@ -121,6 +147,7 @@ const SEED_ORGS = [
       { userId: "platform-admin@example.com", role: "org_admin" },
     ],
     projects: [],
+    awsConfig: null,
   },
 ];
 
@@ -753,6 +780,7 @@ async function handleApi(req, res, requestUrl) {
           : []),
       ],
       projects: [],
+      awsConfig: body.awsConfig || null,
     };
     registry.organizations = registry.organizations || [];
     registry.organizations.push(org);
@@ -789,6 +817,18 @@ async function handleApi(req, res, requestUrl) {
     addAudit(registry, "project.created", { orgId: org.id, projectId: project.id, name: project.name });
     writeRegistry(registry);
     return sendJson(res, 201, { project, orgId: org.id });
+  }
+
+  // PUT /api/organizations/:orgId/aws-config
+  if (req.method === "PUT" && parts[1] === "organizations" && parts[2] && parts[3] === "aws-config") {
+    const body = await readBody(req);
+    const registry = readRegistry();
+    const org = (registry.organizations || []).find((o) => o.id === parts[2]);
+    if (!org) return sendJson(res, 404, { error: "Organization not found." });
+    org.awsConfig = body.awsConfig || null;
+    addAudit(registry, "org.awsConfig.updated", { orgId: org.id, updatedBy: body.updatedBy || "platform-admin@example.com" });
+    writeRegistry(registry);
+    return sendJson(res, 200, { organization: org });
   }
 
   // POST /api/organizations/:orgId/members

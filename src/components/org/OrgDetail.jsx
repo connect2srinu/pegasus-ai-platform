@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Building2, Plus, FolderOpen, Users, ArrowLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Building2, Plus, FolderOpen, Users, ArrowLeft, ChevronRight, Cloud, Server, CheckCircle2, AlertCircle, Pencil } from "lucide-react";
 import { Table, Status } from "../shared/index.jsx";
 import { api } from "../../utils.js";
-import { fallback, ORG_ROLES, PROJECT_ROLES } from "../../constants.js";
+import { fallback, ORG_ROLES, BEDROCK_MODELS } from "../../constants.js";
 
 function ProjectCard({ project, onOpen }) {
   const stats = fallback[project.name] || {};
@@ -80,6 +80,253 @@ function AddMemberForm({ orgId, onAdded, onCancel }) {
   );
 }
 
+function ConfigRow({ label, value, mono = false, hint }) {
+  return (
+    <div className="aws-config-row">
+      <span className="aws-config-label">{label}</span>
+      <span className={`aws-config-value ${mono ? "mono" : ""}`}>{value || <em className="muted">not set</em>}</span>
+      {hint && <span className="hint">{hint}</span>}
+    </div>
+  );
+}
+
+function AccountCard({ icon: Icon, title, color, children, onEdit, canEdit }) {
+  return (
+    <div className={`aws-account-card aws-account-card--${color}`}>
+      <div className="aws-account-card-header">
+        <div className={`aws-account-card-icon aws-account-card-icon--${color}`}><Icon size={18} /></div>
+        <h4>{title}</h4>
+        {canEdit && (
+          <button className="secondary icon-only" onClick={onEdit} title="Edit" style={{ marginLeft: "auto", padding: "4px 8px" }}>
+            <Pencil size={14} />
+          </button>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function AwsConfigTab({ org, canEdit, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const cfg = org.awsConfig;
+
+  function startEdit() {
+    const blank = {
+      modelAccount: { accountId: "", region: "us-east-1", label: "", crossAccountRoleArn: "", allowedModelIds: [] },
+      executionAccount: { accountId: "", region: "us-east-1", label: "", agentCoreExecutionRoleArn: "", ecrRepositoryPrefix: "", s3ArtifactBucket: "", networkConfig: { vpcId: "", subnetIds: "", securityGroupIds: "" } },
+    };
+    setDraft(cfg ? JSON.parse(JSON.stringify(cfg)) : blank);
+    setEditing(true);
+    setError("");
+  }
+
+  function setModel(field, value) {
+    setDraft((d) => ({ ...d, modelAccount: { ...d.modelAccount, [field]: value } }));
+  }
+  function setExec(field, value) {
+    setDraft((d) => ({ ...d, executionAccount: { ...d.executionAccount, [field]: value } }));
+  }
+  function setNet(field, value) {
+    setDraft((d) => ({ ...d, executionAccount: { ...d.executionAccount, networkConfig: { ...d.executionAccount.networkConfig, [field]: value } } }));
+  }
+  function toggleModel(id) {
+    const cur = draft.modelAccount.allowedModelIds || [];
+    setModel("allowedModelIds", cur.includes(id) ? cur.filter((m) => m !== id) : [...cur, id]);
+  }
+
+  async function save() {
+    if (!draft.modelAccount.accountId.trim() || !draft.modelAccount.crossAccountRoleArn.trim()) {
+      setError("Model account ID and cross-account role ARN are required."); return;
+    }
+    if (!draft.executionAccount.accountId.trim() || !draft.executionAccount.agentCoreExecutionRoleArn.trim()) {
+      setError("Execution account ID and role ARN are required."); return;
+    }
+    setBusy(true); setError("");
+    try {
+      await api(`/api/organizations/${org.id}/aws-config`, {
+        method: "PUT",
+        body: JSON.stringify({ awsConfig: draft, updatedBy: "platform-admin@example.com" }),
+      });
+      setEditing(false);
+      onSaved?.();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (editing && draft) {
+    return (
+      <section className="panel">
+        <div className="toolbar">
+          <h2>Edit AWS Configuration</h2>
+          <div className="filters">
+            <button className="secondary" onClick={() => setEditing(false)}>Cancel</button>
+            <button className="primary" onClick={save} disabled={busy}>{busy ? "Saving…" : "Save"}</button>
+          </div>
+        </div>
+        {error && <div className="validation-item fail" style={{ marginBottom: 12 }}><strong>ERROR</strong><span>{error}</span></div>}
+
+        <h3 className="section-label" style={{ marginTop: 0 }}>Bedrock Model Account</h3>
+        <div className="form-grid">
+          <label className="field">Account ID <span className="required">*</span>
+            <input value={draft.modelAccount.accountId} onChange={(e) => setModel("accountId", e.target.value)} placeholder="123456789012" />
+          </label>
+          <label className="field">Region
+            <select value={draft.modelAccount.region} onChange={(e) => setModel("region", e.target.value)}>
+              {["us-east-1","us-west-2","eu-west-1","ap-southeast-1"].map((r) => <option key={r}>{r}</option>)}
+            </select>
+          </label>
+        </div>
+        <label className="field">Friendly label
+          <input value={draft.modelAccount.label} onChange={(e) => setModel("label", e.target.value)} placeholder="Acme Health – Bedrock Model Account" />
+        </label>
+        <label className="field">Cross-account role ARN <span className="required">*</span>
+          <input value={draft.modelAccount.crossAccountRoleArn} onChange={(e) => setModel("crossAccountRoleArn", e.target.value)} placeholder="arn:aws:iam::123456789012:role/PegasusBedrockAccess" className="arn-input" />
+          <span className="hint">Must allow <code>bedrock:InvokeModel</code> and trust the execution role.</span>
+        </label>
+        <div className="field">
+          <span>Allowed models</span>
+          <div className="model-checklist">
+            {BEDROCK_MODELS.map((m) => (
+              <label key={m.id} className="check-label">
+                <input type="checkbox" checked={(draft.modelAccount.allowedModelIds || []).includes(m.id)} onChange={() => toggleModel(m.id)} />
+                {m.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <h3 className="section-label">AgentCore Execution Account</h3>
+        <div className="form-grid">
+          <label className="field">Account ID <span className="required">*</span>
+            <input value={draft.executionAccount.accountId} onChange={(e) => setExec("accountId", e.target.value)} placeholder="123456789012" />
+          </label>
+          <label className="field">Region
+            <select value={draft.executionAccount.region} onChange={(e) => setExec("region", e.target.value)}>
+              {["us-east-1","us-west-2","eu-west-1","ap-southeast-1"].map((r) => <option key={r}>{r}</option>)}
+            </select>
+          </label>
+        </div>
+        <label className="field">Friendly label
+          <input value={draft.executionAccount.label} onChange={(e) => setExec("label", e.target.value)} placeholder="Acme Health – AgentCore Execution Account" />
+        </label>
+        <label className="field">AgentCore execution role ARN <span className="required">*</span>
+          <input value={draft.executionAccount.agentCoreExecutionRoleArn} onChange={(e) => setExec("agentCoreExecutionRoleArn", e.target.value)} placeholder="arn:aws:iam::123456789012:role/AgentCoreExecutionRole" className="arn-input" />
+          <span className="hint">This role must be able to assume the model account role above via STS.</span>
+        </label>
+        <div className="form-grid">
+          <label className="field">ECR repository prefix
+            <input value={draft.executionAccount.ecrRepositoryPrefix} onChange={(e) => setExec("ecrRepositoryPrefix", e.target.value)} placeholder="123456789012.dkr.ecr.us-east-1.amazonaws.com/pegasus" className="arn-input" />
+          </label>
+          <label className="field">S3 artifact bucket
+            <input value={draft.executionAccount.s3ArtifactBucket} onChange={(e) => setExec("s3ArtifactBucket", e.target.value)} placeholder="pegasus-agent-artifacts-123456789012" />
+          </label>
+        </div>
+        <p className="field-label" style={{ marginTop: 12 }}>Network configuration <span className="muted">(optional)</span></p>
+        <div className="form-grid">
+          <label className="field">VPC ID <input value={draft.executionAccount.networkConfig.vpcId} onChange={(e) => setNet("vpcId", e.target.value)} placeholder="vpc-0abc1234" /></label>
+          <label className="field">Subnet IDs (comma-sep) <input value={draft.executionAccount.networkConfig.subnetIds} onChange={(e) => setNet("subnetIds", e.target.value)} placeholder="subnet-aaa, subnet-bbb" /></label>
+          <label className="field">Security group IDs (comma-sep) <input value={draft.executionAccount.networkConfig.securityGroupIds} onChange={(e) => setNet("securityGroupIds", e.target.value)} placeholder="sg-abc123" /></label>
+        </div>
+      </section>
+    );
+  }
+
+  if (!cfg) {
+    return (
+      <section className="panel">
+        <div className="empty-state" style={{ border: "1px dashed var(--amber)" }}>
+          <AlertCircle size={24} style={{ color: "var(--amber)", marginBottom: 10 }} />
+          <strong>AWS accounts not configured</strong>
+          <p className="muted" style={{ marginTop: 6 }}>
+            Agents authored under this organization cannot be deployed until a Platform Admin configures the Bedrock model account and AgentCore execution account.
+          </p>
+          {canEdit && (
+            <button className="primary" style={{ marginTop: 14 }} onClick={startEdit}>
+              Configure AWS Accounts
+            </button>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  const ma = cfg.modelAccount;
+  const ea = cfg.executionAccount;
+  const net = ea.networkConfig || {};
+
+  return (
+    <div className="aws-config-view">
+      <div className="aws-config-status">
+        <CheckCircle2 size={16} style={{ color: "var(--green)" }} />
+        <span>AWS accounts configured. Agents in this org deploy automatically using these settings.</span>
+        {canEdit && (
+          <button className="secondary" style={{ marginLeft: "auto" }} onClick={startEdit}>
+            <Pencil size={13} style={{ marginRight: 4 }} />Edit
+          </button>
+        )}
+      </div>
+
+      <div className="aws-account-cards">
+        <AccountCard icon={Cloud} title="Bedrock Model Account" color="blue" canEdit={false}>
+          <ConfigRow label="Account ID" value={ma.accountId} mono />
+          <ConfigRow label="Region" value={ma.region} />
+          {ma.label && <ConfigRow label="Label" value={ma.label} />}
+          <ConfigRow label="Cross-account role ARN" value={ma.crossAccountRoleArn} mono hint="Allows bedrock:InvokeModel; trusts the execution role" />
+          <div className="aws-config-row">
+            <span className="aws-config-label">Allowed models</span>
+            <div className="model-pills">
+              {(ma.allowedModelIds || []).map((id) => {
+                const label = BEDROCK_MODELS.find((m) => m.id === id)?.label || id;
+                return <span key={id} className="pill">{label}</span>;
+              })}
+            </div>
+          </div>
+        </AccountCard>
+
+        <AccountCard icon={Server} title="AgentCore Execution Account" color="violet" canEdit={false}>
+          <ConfigRow label="Account ID" value={ea.accountId} mono />
+          <ConfigRow label="Region" value={ea.region} />
+          {ea.label && <ConfigRow label="Label" value={ea.label} />}
+          <ConfigRow label="Execution role ARN" value={ea.agentCoreExecutionRoleArn} mono hint="AgentCore assumes this role; must be able to assume the model role" />
+          <ConfigRow label="ECR prefix" value={ea.ecrRepositoryPrefix} mono />
+          <ConfigRow label="S3 artifact bucket" value={ea.s3ArtifactBucket} mono />
+          {(net.vpcId || net.subnetIds) && (
+            <>
+              <ConfigRow label="VPC ID" value={net.vpcId} mono />
+              <ConfigRow label="Subnet IDs" value={net.subnetIds} mono />
+              <ConfigRow label="Security groups" value={net.securityGroupIds} mono />
+            </>
+          )}
+        </AccountCard>
+      </div>
+
+      <div className="trust-explainer" style={{ marginTop: 20 }}>
+        <h4>Cross-account trust flow</h4>
+        <div className="trust-flow">
+          <div className="trust-node trust-node--blue">
+            <Cloud size={14} /><span>Model Account<br /><small>{ma.accountId}</small></span>
+          </div>
+          <div className="trust-arrow">← assumes role →</div>
+          <div className="trust-node trust-node--violet">
+            <Server size={14} /><span>Execution Account<br /><small>{ea.accountId}</small></span>
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+          AgentCore in the execution account assumes <code>{ma.crossAccountRoleArn || "…"}</code> via STS to invoke Bedrock models in the model account.
+          No Bedrock credentials are stored in this platform.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function OrgDetail({ org, onBack, onOpenProject, onCreateProject, refreshOrg, currentUser = "platform-admin@example.com" }) {
   const [activeTab, setActiveTab] = useState("projects");
   const [showAddMember, setShowAddMember] = useState(false);
@@ -114,9 +361,16 @@ export default function OrgDetail({ org, onBack, onOpenProject, onCreateProject,
 
       {/* Tabs */}
       <div className="org-tabs">
-        {[["projects", "Projects"], ["members", "Members & Roles"]].map(([id, label]) => (
+        {[
+          ["projects", "Projects"],
+          ["members", "Members & Roles"],
+          ["aws", "AWS Configuration"],
+        ].map(([id, label]) => (
           <button key={id} className={`org-tab ${activeTab === id ? "active" : ""}`} onClick={() => setActiveTab(id)}>
             {label}
+            {id === "aws" && !org.awsConfig && (
+              <span className="tab-warn-dot" title="AWS accounts not configured" />
+            )}
           </button>
         ))}
       </div>
@@ -171,6 +425,11 @@ export default function OrgDetail({ org, onBack, onOpenProject, onCreateProject,
             ))}
           </Table>
         </section>
+      )}
+
+      {/* AWS Configuration tab */}
+      {activeTab === "aws" && (
+        <AwsConfigTab org={org} canEdit={canManageMembers} onSaved={refreshOrg} />
       )}
     </div>
   );

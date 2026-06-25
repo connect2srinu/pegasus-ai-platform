@@ -39,6 +39,32 @@ export const FALLBACK_ORGS = [
       { id: "billing-experience", name: "Billing Experience", description: "Invoice, payment, and refund automation." },
       { id: "member-services",    name: "Member Services",    description: "Member benefits lookup and support." },
     ],
+    awsConfig: {
+      modelAccount: {
+        accountId: "987654321098",
+        region: "us-east-1",
+        label: "Acme Health – Bedrock Model Account",
+        crossAccountRoleArn: "arn:aws:iam::987654321098:role/PegasusBedrockAccess",
+        allowedModelIds: [
+          "anthropic.claude-3-5-sonnet-20241022-v2:0",
+          "anthropic.claude-3-5-haiku-20241022-v1:0",
+          "amazon.nova-pro-v1:0",
+        ],
+      },
+      executionAccount: {
+        accountId: "123456789012",
+        region: "us-east-1",
+        label: "Acme Health – AgentCore Execution Account",
+        agentCoreExecutionRoleArn: "arn:aws:iam::123456789012:role/AgentCoreExecutionRole",
+        ecrRepositoryPrefix: "123456789012.dkr.ecr.us-east-1.amazonaws.com/pegasus",
+        s3ArtifactBucket: "pegasus-agent-artifacts-123456789012",
+        networkConfig: {
+          vpcId: "vpc-0abc1234def56789a",
+          subnetIds: "subnet-0aa1111bbb222333c, subnet-0dd4444eee555666f",
+          securityGroupIds: "sg-0abc123def456789a",
+        },
+      },
+    },
   },
   {
     id: "acme-finance",
@@ -50,6 +76,7 @@ export const FALLBACK_ORGS = [
       { userId: "platform-admin@example.com", role: "org_admin" },
     ],
     projects: [],
+    awsConfig: null,  // not yet configured
   },
 ];
 
