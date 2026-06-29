@@ -6,6 +6,7 @@ import { fallback, ORG_ROLES, BEDROCK_MODELS } from "../../constants.js";
 import AwsAccountConnectionForm from "./AwsAccountConnectionForm.jsx";
 import InventoryCatalog from "./InventoryCatalog.jsx";
 import OrgToolRegistry from "./OrgToolRegistry.jsx";
+import OrgApprovals from "./OrgApprovals.jsx";
 
 function ProjectCard({ project, onOpen }) {
   const stats = fallback[project.name] || {};
@@ -430,10 +431,18 @@ function ConnectedAccountsTab({ org }) {
 export default function OrgDetail({ org, onBack, onOpenProject, onCreateProject, refreshOrg, currentUser = "platform-admin@example.com" }) {
   const [activeTab, setActiveTab] = useState("projects");
   const [showAddMember, setShowAddMember] = useState(false);
+  const [orgPendingCount, setOrgPendingCount] = useState(0);
   const isPlatformAdmin = currentUser === "platform-admin@example.com";
   const myRole = org.members?.find((m) => m.userId === currentUser)?.role || (isPlatformAdmin ? "platform_admin" : null);
   const canCreateProject = isPlatformAdmin || myRole === "org_admin" || myRole === "org_member";
   const canManageMembers = isPlatformAdmin || myRole === "org_admin";
+
+  // Load pending count for the Approvals tab badge
+  useEffect(() => {
+    api(`/api/approvals?organizationId=${org.id}&scope=org&status=pending`)
+      .then((r) => setOrgPendingCount((r.approvalTasks || []).length))
+      .catch(() => {});
+  }, [org.id, activeTab]);
 
   return (
     <div>
@@ -464,12 +473,16 @@ export default function OrgDetail({ org, onBack, onOpenProject, onCreateProject,
         {[
           ["projects", "Projects"],
           ["tool-registry", "Tool Registry"],
+          ["approvals", "Approvals"],
           ["members", "Members & Roles"],
           ["accounts", "Connected Accounts"],
           ["aws", "Platform AWS Config"],
         ].map(([id, label]) => (
           <button key={id} className={`org-tab ${activeTab === id ? "active" : ""}`} onClick={() => setActiveTab(id)}>
             {label}
+            {id === "approvals" && orgPendingCount > 0 && (
+              <span className="tab-count-badge">{orgPendingCount}</span>
+            )}
             {id === "aws" && !org.awsConfig && (
               <span className="tab-warn-dot" title="AWS accounts not configured" />
             )}
@@ -533,6 +546,13 @@ export default function OrgDetail({ org, onBack, onOpenProject, onCreateProject,
       {activeTab === "tool-registry" && (
         <section className="panel">
           <OrgToolRegistry org={org} />
+        </section>
+      )}
+
+      {/* Org Approvals tab */}
+      {activeTab === "approvals" && (
+        <section className="panel">
+          <OrgApprovals org={org} />
         </section>
       )}
 

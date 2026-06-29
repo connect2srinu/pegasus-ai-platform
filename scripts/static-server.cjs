@@ -1320,9 +1320,29 @@ async function handleApi(req, res, requestUrl) {
     return sendJson(res, 201, { agent: agentSummary(agent), approvalTasks: tasks, validations: agent.versions[0].validations });
   }
   if (req.method === "GET" && requestUrl.pathname === "/api/approvals") {
-    const projectId = requestUrl.searchParams.get("projectId");
-    const tasks = projectId ? registry.approvalTasks.filter((task) => task.projectId === projectId) : registry.approvalTasks;
-    return sendJson(res, 200, { approvalTasks: tasks });
+    const registry = readRegistry();
+    const projectId   = requestUrl.searchParams.get("projectId");
+    const orgId       = requestUrl.searchParams.get("organizationId");
+    const scope       = requestUrl.searchParams.get("scope"); // "org" | "project"
+    const statusFilter= requestUrl.searchParams.get("status");
+    let tasks = registry.approvalTasks;
+    if (projectId)  tasks = tasks.filter((t) => t.projectId === projectId);
+    if (orgId)      tasks = tasks.filter((t) => t.organizationId === orgId);
+    if (scope === "org")     tasks = tasks.filter((t) => !t.projectId);
+    if (scope === "project") tasks = tasks.filter((t) => !!t.projectId);
+    if (statusFilter) tasks = tasks.filter((t) => t.status === statusFilter);
+    // Enrich org-scoped tool_registration tasks with LTD + TRR details
+    const enriched = tasks.map((task) => {
+      if (task.taskCategory !== "tool_registration" || task.projectId) return task;
+      const trr = task.toolRegistrationRequestId
+        ? (registry.toolRegistrationRequests || []).find((r) => r.id === task.toolRegistrationRequestId)
+        : null;
+      const ltd = trr?.logicalToolDefinitionId
+        ? (registry.logicalToolDefinitions || []).find((l) => l.id === trr.logicalToolDefinitionId)
+        : null;
+      return { ...task, _trr: trr || null, _ltd: ltd || null };
+    });
+    return sendJson(res, 200, { approvalTasks: enriched });
   }
   if (req.method === "POST" && parts[1] === "approvals" && parts[3] === "decision") {
     const task = registry.approvalTasks.find((item) => item.id === parts[2]);
@@ -1336,19 +1356,39 @@ async function handleApi(req, res, requestUrl) {
 
     // Handle tool registration request approval tasks
     if (task.taskCategory === "tool_registration" && task.toolRegistrationRequestId) {
-      const trr = (registry.toolRegistrationRequests || []).find((r) => r.id === task.toolRegistrationRequestId);
+      const registry = readRegistry();
+      // Re-find task in fresh registry
+      const freshTask = registry.approvalTasks.find((item) => item.id === parts[2]);
+      if (!freshTask) return sendJson(res, 404, { error: "Approval task not found." });
+      freshTask.status = payload.decision === "approved" ? "approved" : "rejected";
+      freshTask.decision = payload.decision;
+      freshTask.comments = payload.comments || "";
+      freshTask.approver = payload.approver || "current-reviewer@example.com";
+      freshTask.decidedAt = now();
+      const trr = (registry.toolRegistrationRequests || []).find((r) => r.id === freshTask.toolRegistrationRequestId);
+      let ltd = null;
       if (trr) {
         const trrTasks = registry.approvalTasks.filter((t) => t.toolRegistrationRequestId === trr.id);
         if (trrTasks.some((t) => t.status === "rejected")) {
           trr.approvalStatus = "REJECTED";
+          // Also mark the linked LTD as rejected
+          if (trr.logicalToolDefinitionId) {
+            ltd = (registry.logicalToolDefinitions || []).find((l) => l.id === trr.logicalToolDefinitionId);
+            if (ltd) { ltd.approvalStatus = "REJECTED"; ltd.status = "DRAFT"; ltd.updatedAt = now(); }
+          }
         } else if (trrTasks.every((t) => t.status === "approved")) {
           trr.approvalStatus = "APPROVED";
+          // Promote the linked LTD to APPROVED + ACTIVE
+          if (trr.logicalToolDefinitionId) {
+            ltd = (registry.logicalToolDefinitions || []).find((l) => l.id === trr.logicalToolDefinitionId);
+            if (ltd) { ltd.approvalStatus = "APPROVED"; ltd.status = "ACTIVE"; ltd.updatedAt = now(); }
+          }
         }
         trr.updatedAt = now();
       }
-      addAudit(registry, "approval.decided", { taskId: task.id, decision: task.decision, trrId: task.toolRegistrationRequestId, taskCategory: "tool_registration" });
+      addAudit(registry, "approval.decided", { taskId: freshTask.id, decision: freshTask.decision, trrId: freshTask.toolRegistrationRequestId, taskCategory: "tool_registration" });
       writeRegistry(registry);
-      return sendJson(res, 200, { approvalTask: task, toolRegistrationRequest: trr || null });
+      return sendJson(res, 200, { approvalTask: freshTask, toolRegistrationRequest: trr || null, logicalToolDefinition: ltd || null });
     }
 
     // Handle resource (tool / KB) approval tasks
