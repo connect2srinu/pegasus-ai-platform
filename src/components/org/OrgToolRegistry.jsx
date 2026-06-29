@@ -195,7 +195,8 @@ function RegisterToolForm({ orgId, environments, onSuccess, onCancel }) {
 // ── Deploy-to-environment form ────────────────────────────────────────────────
 
 function DeployToEnvForm({ orgId, ltd, environments, connections, onSuccess, onCancel }) {
-  const alreadyDeployed = new Set((ltd.environmentDeployments || []).map((e) => e.environmentId));
+  const envDeps = ltd.environmentDeployments || [];
+  const alreadyDeployed = new Set(envDeps.map((e) => e.environmentId));
   const available = environments.filter((e) => !alreadyDeployed.has(e.id));
 
   const [form, setForm] = useState({
@@ -204,15 +205,29 @@ function DeployToEnvForm({ orgId, ltd, environments, connections, onSuccess, onC
     sourceResourceArn: "",
     credentialProviderRef: "",
     mcpToolName: ltd.toolKey,
+    gatewayTargetId: "",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(null);
 
   const relevantConnections = connections.filter(
     (c) => !form.environmentId || c.environmentId === form.environmentId
   );
+  const selectedConn = connections.find((c) => c.id === form.awsAccountConnectionId);
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); }
+
+  // When env changes, auto-select the matching connection if there's exactly one
+  function onEnvChange(envId) {
+    set("environmentId", envId);
+    const matching = connections.filter((c) => c.environmentId === envId);
+    if (matching.length === 1) {
+      setForm((f) => ({ ...f, environmentId: envId, awsAccountConnectionId: matching[0].id }));
+    } else {
+      setForm((f) => ({ ...f, environmentId: envId, awsAccountConnectionId: "" }));
+    }
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -223,11 +238,13 @@ function DeployToEnvForm({ orgId, ltd, environments, connections, onSuccess, onC
       const body = { ...form };
       if (!body.sourceResourceArn) delete body.sourceResourceArn;
       if (!body.credentialProviderRef) delete body.credentialProviderRef;
+      if (!body.gatewayTargetId) delete body.gatewayTargetId;
       const result = await api(
         `/api/organizations/${orgId}/logical-tools/${ltd.id}/env-deployments`,
         { method: "POST", body: JSON.stringify(body) }
       );
-      onSuccess(result);
+      setSuccess(result.environmentToolDeployment);
+      setTimeout(() => onSuccess(result), 1500);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -242,10 +259,20 @@ function DeployToEnvForm({ orgId, ltd, environments, connections, onSuccess, onC
           <h4 style={{ margin: 0 }}>Deploy to Environment</h4>
           <button className="secondary" type="button" onClick={onCancel}><X size={13} /></button>
         </div>
-        <p className="muted" style={{ fontSize: 13 }}>
-          This tool is already deployed to all configured environments.
-        </p>
-        <button className="secondary" onClick={onCancel}>Close</button>
+        <div className="validation-item pass" style={{ marginBottom: 8 }}>
+          <CheckCircle2 size={13} />
+          <span>Tool is already registered in all configured environments.</span>
+        </div>
+        {envDeps.map((dep) => {
+          const env = environments.find((e) => e.id === dep.environmentId);
+          return (
+            <div key={dep.id} className="otr-env-row" style={{ marginBottom: 4 }}>
+              <span className="otr-env-badge">{env?.name || dep.environmentId}</span>
+              {envBadge(dep.deploymentStatus)}
+            </div>
+          );
+        })}
+        <button className="secondary" style={{ marginTop: 12 }} onClick={onCancel}>Close</button>
       </div>
     );
   }
@@ -256,11 +283,18 @@ function DeployToEnvForm({ orgId, ltd, environments, connections, onSuccess, onC
         <div>
           <h4 style={{ margin: 0 }}>Deploy <code>{ltd.toolKey}</code> to Environment</h4>
           <p className="muted" style={{ margin: "4px 0 0", fontSize: 12 }}>
-            Provide the environment-specific bindings. No DEV ARNs or credentials will be copied.
+            Provide env-specific bindings for this environment. The gateway ARN is pre-filled from the environment's runtime config.
           </p>
         </div>
         <button className="secondary" type="button" onClick={onCancel}><X size={13} /></button>
       </div>
+
+      {success && (
+        <div className="validation-item pass" style={{ marginBottom: 12 }}>
+          <CheckCircle2 size={13} />
+          <span>Deployment registered (<code>{success.id}</code>) — status: {success.deploymentStatus}. Refreshing…</span>
+        </div>
+      )}
 
       {error && (
         <div className="validation-item fail" style={{ marginBottom: 12 }}>
@@ -268,11 +302,12 @@ function DeployToEnvForm({ orgId, ltd, environments, connections, onSuccess, onC
         </div>
       )}
 
+      {!success && (
       <form onSubmit={submit}>
         <div className="form-grid">
           <label className="field">
             Target environment <span className="required">*</span>
-            <select value={form.environmentId} onChange={(e) => set("environmentId", e.target.value)}>
+            <select value={form.environmentId} onChange={(e) => onEnvChange(e.target.value)}>
               <option value="">— select —</option>
               {available.map((env) => (
                 <option key={env.id} value={env.id}>{env.name}{env.isProduction ? " (PROD)" : ""}</option>
@@ -286,10 +321,15 @@ function DeployToEnvForm({ orgId, ltd, environments, connections, onSuccess, onC
               {relevantConnections.map((c) => (
                 <option key={c.id} value={c.id}>{c.accountName || c.awsAccountId} ({c.environmentType})</option>
               ))}
-              {relevantConnections.length === 0 && connections.map((c) => (
-                <option key={c.id} value={c.id}>{c.accountName || c.awsAccountId} ({c.environmentType})</option>
-              ))}
             </select>
+            {form.environmentId && relevantConnections.length === 0 && (
+              <span className="hint" style={{ color: "var(--red)" }}>
+                No account connected to this environment. Go to Connected Accounts tab to link one.
+              </span>
+            )}
+            {selectedConn && (
+              <span className="hint">Account: {selectedConn.awsAccountId} · Gateway: {selectedConn.agentCoreGatewayArn?.split("/").pop() || "—"}</span>
+            )}
           </label>
         </div>
 
@@ -313,23 +353,39 @@ function DeployToEnvForm({ orgId, ltd, environments, connections, onSuccess, onC
           />
         </label>
 
-        <label className="field">
-          Credential reference <span className="muted">(optional)</span>
-          <input
-            value={form.credentialProviderRef}
-            onChange={(e) => set("credentialProviderRef", e.target.value)}
-            placeholder="sm/prod-api-key-name"
-          />
-          <span className="hint">Secret name only — never a raw value</span>
-        </label>
+        <div className="form-grid">
+          <label className="field">
+            Gateway target ID <span className="muted">(optional)</span>
+            <input
+              value={form.gatewayTargetId}
+              onChange={(e) => set("gatewayTargetId", e.target.value)}
+              placeholder={`tgt-${ltd.toolKey.replace(/_/g, "-")}`}
+            />
+            <span className="hint">The AgentCore Gateway target that proxies this tool. Leave blank to use the default.</span>
+          </label>
+          <label className="field">
+            Credential reference <span className="muted">(optional)</span>
+            <input
+              value={form.credentialProviderRef}
+              onChange={(e) => set("credentialProviderRef", e.target.value)}
+              placeholder="sm/prod-api-key-name"
+            />
+            <span className="hint">Secret name only — never a raw value</span>
+          </label>
+        </div>
 
         <div className="toolbar" style={{ marginTop: 16, marginBottom: 0 }}>
           <button className="secondary" type="button" onClick={onCancel}>Cancel</button>
-          <button className="primary" type="submit" disabled={busy}>
-            {busy ? "Deploying…" : "Create Environment Deployment"}
+          <button
+            className="primary"
+            type="submit"
+            disabled={busy || !form.environmentId || !form.awsAccountConnectionId}
+          >
+            {busy ? "Deploying…" : "Register Environment Deployment"}
           </button>
         </div>
       </form>
+      )}
     </div>
   );
 }
@@ -544,11 +600,15 @@ function GrantToProjectPanel({ ltd, orgId, environments, onGranted, onCancel }) 
     }
   }
 
-  // Active env deployments the tool has — only grant for envs where tool is deployed
+  // Env deployments the tool has — allow ACTIVE or STALE (not DRIFT_DETECTED, NOT_DEPLOYED)
   const deployedEnvIds = new Set((ltd.environmentDeployments || [])
-    .filter((e) => e.deploymentStatus === "ACTIVE")
+    .filter((e) => e.deploymentStatus === "ACTIVE" || e.deploymentStatus === "STALE")
+    .map((e) => e.environmentId));
+  const driftEnvIds = new Set((ltd.environmentDeployments || [])
+    .filter((e) => e.deploymentStatus === "DRIFT_DETECTED")
     .map((e) => e.environmentId));
   const grantableEnvs = environments.filter((e) => deployedEnvIds.has(e.id));
+  const driftEnvs = environments.filter((e) => driftEnvIds.has(e.id));
 
   return (
     <div className="otr-grant-panel">
@@ -568,9 +628,19 @@ function GrantToProjectPanel({ ltd, orgId, environments, onGranted, onCancel }) 
       {error && <div className="validation-item fail" style={{ marginBottom: 8 }}><strong>ERROR</strong><span>{error}</span></div>}
       {success && <div className="validation-item pass" style={{ marginBottom: 8 }}><CheckCircle2 size={13} /><span>{success}</span></div>}
 
+      {driftEnvs.length > 0 && (
+        <div className="validation-item warn" style={{ marginBottom: 8, fontSize: 12 }}>
+          <AlertTriangle size={13} />
+          <span>
+            Drift detected in {driftEnvs.map((e) => e.name).join(", ")}.
+            Validate those deployments before granting to projects.
+          </span>
+        </div>
+      )}
+
       {grantableEnvs.length === 0 ? (
         <p className="muted" style={{ fontSize: 12 }}>
-          No active environment deployments. Deploy the tool to at least one environment before granting to projects.
+          No deployed environments. Deploy this tool to at least one environment first, then come back to grant it.
         </p>
       ) : (
         <div className="form-grid" style={{ gap: 10 }}>

@@ -515,20 +515,41 @@ const SEED_ACCOUNT_CONNECTIONS = [
     environmentId: "env-acme-health-dev",       // linked to DEV environment
     environmentType: "DEV",
     awsAccountId: "555666777888",
-    accountName: "Acme Health – Business Unit Account",
+    accountName: "Acme Health – DEV Account",
     region: "us-east-1",
     discoveryRoleArn: "arn:aws:iam::555666777888:role/GuardianDiscoveryRole",
     provisioningRoleArn: "arn:aws:iam::555666777888:role/GuardianProvisioningRole",
     deploymentRoleArn: "arn:aws:iam::555666777888:role/GuardianProvisioningRole",
     externalIdRef: "sm/guardian-acme-health-external-id",
     enabledRegions: ["us-east-1"],
-    agentCoreGatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001",
-    agentCoreGatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+    agentCoreGatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-dev-001",
+    agentCoreGatewayUrl: "https://gw-acme-health-dev-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
     status: "CONNECTED",
     lastSuccessfulSyncAt: "2025-05-01T06:00:00Z",
     createdBy: "platform-admin@example.com",
     createdAt: "2025-02-15T10:00:00Z",
     updatedAt: "2025-05-01T06:00:00Z",
+  },
+  {
+    id: "conn-acme-health-prod-001",
+    organizationId: "acme-health",
+    environmentId: "env-acme-health-prod",      // linked to PROD environment
+    environmentType: "PROD",
+    awsAccountId: "111222333444",
+    accountName: "Acme Health – PROD Account",
+    region: "us-east-1",
+    discoveryRoleArn: "arn:aws:iam::111222333444:role/GuardianDiscoveryRole",
+    provisioningRoleArn: "arn:aws:iam::111222333444:role/GuardianProvisioningRole",
+    deploymentRoleArn: "arn:aws:iam::111222333444:role/GuardianProvisioningRole",
+    externalIdRef: "sm/guardian-acme-health-prod-external-id",
+    enabledRegions: ["us-east-1"],
+    agentCoreGatewayArn: "arn:aws:bedrock-agentcore:us-east-1:111222333444:gateway/gw-acme-health-prod-001",
+    agentCoreGatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+    status: "CONNECTED",
+    lastSuccessfulSyncAt: "2025-05-10T06:00:00Z",
+    createdBy: "platform-admin@example.com",
+    createdAt: "2025-02-15T10:00:00Z",
+    updatedAt: "2025-05-10T06:00:00Z",
   },
 ];
 
@@ -558,18 +579,17 @@ const SEED_ENVIRONMENT_RUNTIME_MAPPINGS = [
     createdAt: "2025-02-15T10:00:00Z",
     updatedAt: "2025-02-15T10:00:00Z",
   },
-  // PROD runtime mapping placeholder — not yet configured
   {
     id: "erm-acme-health-prod",
     organizationId: "acme-health",
     environmentId: "env-acme-health-prod",
-    awsAccountConnectionId: null,              // PROD account not connected yet
+    awsAccountConnectionId: "conn-acme-health-prod-001",
     region: "us-east-1",
-    agentCoreGatewayArn: null,
-    agentCoreGatewayId: null,
-    agentCoreGatewayUrl: null,
-    harnessExecutionRoleArn: null,
-    deploymentRoleArn: null,
+    agentCoreGatewayArn: "arn:aws:bedrock-agentcore:us-east-1:111222333444:gateway/gw-acme-health-prod-001",
+    agentCoreGatewayId: "gw-acme-health-prod-001",
+    agentCoreGatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+    harnessExecutionRoleArn: "arn:aws:iam::111222333444:role/AgentCoreExecutionRole",
+    deploymentRoleArn: "arn:aws:iam::111222333444:role/GuardianProvisioningRole",
     modelAccountId: null,
     modelBindingRef: null,
     memoryArn: null,
@@ -881,9 +901,20 @@ function ensureRegistry() {
   if (registry.logicalToolDefinitions.length === 0) {
     registry.logicalToolDefinitions = SEED_LOGICAL_TOOL_DEFINITIONS;
   }
+  // Backfill: ensure PROD account connection exists in registry
+  if (!registry.awsAccountConnections.find((c) => c.id === "conn-acme-health-prod-001")) {
+    registry.awsAccountConnections.push(SEED_ACCOUNT_CONNECTIONS[1]);
+  }
   // Seed environment tool deployments if empty
   if (registry.environmentToolDeployments.length === 0) {
     registry.environmentToolDeployments = SEED_ENVIRONMENT_TOOL_DEPLOYMENTS;
+  }
+  // Backfill: reset DRIFT_DETECTED seed ETDs back to ACTIVE (drift was set from validate testing)
+  const seedEtdIds = new Set(SEED_ENVIRONMENT_TOOL_DEPLOYMENTS.map((e) => e.id));
+  for (const etd of registry.environmentToolDeployments) {
+    if (seedEtdIds.has(etd.id) && etd.deploymentStatus === "DRIFT_DETECTED") {
+      etd.deploymentStatus = "ACTIVE";
+    }
   }
   // Seed project tool grants if empty
   if (registry.projectToolGrants.length === 0) {
@@ -3316,11 +3347,12 @@ async function handleApi(req, res, requestUrl) {
     if (!ltd) return sendJson(res, 404, { error: "LogicalToolDefinition not found." });
     if (ltd.approvalStatus !== "APPROVED") return sendJson(res, 409, { error: "Tool must be APPROVED before granting to projects." });
 
-    // Verify an active ETD exists for this env
+    // Verify an ETD exists for this env (ACTIVE or STALE — not DRIFT_DETECTED or NOT_DEPLOYED)
     const etd = (registry.environmentToolDeployments || []).find(
-      (e) => e.logicalToolDefinitionId === ltdId && e.environmentId === environmentId && e.deploymentStatus === "ACTIVE"
+      (e) => e.logicalToolDefinitionId === ltdId && e.environmentId === environmentId &&
+             (e.deploymentStatus === "ACTIVE" || e.deploymentStatus === "STALE")
     );
-    if (!etd) return sendJson(res, 409, { error: "Tool is not actively deployed in that environment. Deploy it first." });
+    if (!etd) return sendJson(res, 409, { error: "Tool is not deployed in that environment (or has schema drift). Deploy it first, then re-validate if drift was detected." });
 
     // Verify project belongs to org
     const allProjects = Object.values(registry.projects || {});
