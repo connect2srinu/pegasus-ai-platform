@@ -2070,3 +2070,147 @@ textarea {
   display: flex; align-items: center;
 }
 .icon-btn:hover { color: var(--ink); }
+
+/* ── Inventory Catalog — Registration UX ──────────────────────────────────── */
+
+/* Registration progress bar */
+.inv-reg-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.inv-reg-progress-bar {
+  flex: 1;
+  height: 5px;
+  background: var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.inv-reg-progress-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* Chip dot indicator for registerable types */
+.inv-chip-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--blue);
+  flex-shrink: 0;
+}
+
+/* Register-as-tool button in the table */
+.reg-from-discovery-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 5px;
+  border: 1px solid var(--blue);
+  background: #e8f0fe;
+  color: var(--blue);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+.reg-from-discovery-btn:hover { background: #d0e2fc; }
+
+/* Row highlight when registration form is open */
+.resource-row--registering td { background: #f0f6ff; }
+.resource-row-form-row td { padding: 0 !important; }
+
+/* Registration drawer (inline below row) */
+.reg-drawer {
+  padding: 16px 20px;
+  background: var(--surface);
+  border-top: 2px solid var(--blue);
+  border-bottom: 1px solid var(--line);
+}
+.reg-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.reg-drawer-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.reg-drawer-icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: #e8f0fe;
+  border: 1px solid #c5d9f7;
+  color: var(--blue);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Pre-filled summary block */
+.reg-drawer-prefilled {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.reg-prefilled-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 12px;
+}
+.reg-prefilled-row .muted {
+  min-width: 130px;
+  flex-shrink: 0;
+}
+
+/* Side-effect level selector */
+.side-effect-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+@media (max-width: 700px) { .side-effect-options { grid-template-columns: 1fr; } }
+
+.side-effect-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 11px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+  font-size: 12px;
+}
+.side-effect-option strong { font-size: 11px; letter-spacing: 0.03em; }
+.side-effect-option span  { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.side-effect-option--green { border-top: 2px solid transparent; }
+.side-effect-option--amber { border-top: 2px solid transparent; }
+.side-effect-option--red   { border-top: 2px solid transparent; }
+.side-effect-option--selected.side-effect-option--green {
+  border-color: var(--green);
+  border-top: 2px solid var(--green);
+  background: #f0fdf4;
+}
+.side-effect-option--selected.side-effect-option--amber {
+  border-color: var(--amber);
+  border-top: 2px solid var(--amber);
+  background: #fffbeb;
+}
+.side-effect-option--selected.side-effect-option--red {
+  border-color: var(--red);
+  border-top: 2px solid var(--red);
+  background: #fff1f2;
+}
