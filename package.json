@@ -11,6 +11,14 @@
     "check": "vite build"
   },
   "dependencies": {
+    "@aws-sdk/client-api-gateway": "^3.1075.0",
+    "@aws-sdk/client-bedrock": "^3.1075.0",
+    "@aws-sdk/client-bedrock-agentcore": "^3.1075.0",
+    "@aws-sdk/client-bedrock-agentcore-control": "^3.1075.0",
+    "@aws-sdk/client-lambda": "^3.1075.0",
+    "@aws-sdk/client-s3": "^3.1075.0",
+    "@aws-sdk/client-sts": "^3.1075.0",
+    "@aws-sdk/credential-providers": "^3.1075.0",
     "@vitejs/plugin-react": "^4.3.4",
     "js-yaml": "^4.2.0",
     "lucide-react": "^0.561.0",

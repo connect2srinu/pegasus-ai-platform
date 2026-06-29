@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { Plus, X, Server, Lock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, X, Server, Lock, CheckCircle2, AlertTriangle, Clock, Wrench } from "lucide-react";
 import { Table, Status } from "../shared/index.jsx";
 import { api, projectId, riskClass, titleCase } from "../../utils.js";
-import { AGENT_TYPES, TOOL_TYPES, KB_TYPES, RISK_TIERS, CLASSIFICATIONS, fallback } from "../../constants.js";
+import { AGENT_TYPES, TOOL_TYPES, KB_TYPES, RISK_TIERS, CLASSIFICATIONS, fallback, SIDE_EFFECT_LEVELS, PROJECT_TOOL_STATUS } from "../../constants.js";
+import AddToolWizard from "./AddToolWizard.jsx";
 
 function AddResourceForm({ mode, pid, onSuccess, onCancel }) {
   const defaultTool = { name: "", toolType: "rest", endpoint: "", credentialRef: "", riskTier: "medium", classification: "internal", allowedAgentTypes: Object.keys(AGENT_TYPES), description: "" };
@@ -130,55 +131,152 @@ function AddResourceForm({ mode, pid, onSuccess, onCancel }) {
 }
 
 export function Tools({ project, tools, refreshTools, refreshApprovals }) {
-  const [showForm, setShowForm] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+  const [projectTools, setProjectTools] = useState([]);
+  const [pendingTRRs, setPendingTRRs] = useState([]);
   const pid = projectId(project);
 
-  const rows = tools.length > 0
-    ? tools
-    : fallback[project].tools.map((name, i) => ({
-        id: name, name, toolType: "rest",
-        riskTier: i > 1 ? "high" : "medium",
-        classification: "internal",
-        status: i > 2 ? "pending_review" : "approved",
-        endpoint: "", credentialRef: "", description: "",
-      }));
+  useEffect(() => {
+    loadProjectTools();
+    loadPendingTRRs();
+  }, [project]);
+
+  async function loadProjectTools() {
+    try {
+      const r = await api(`/api/projects/${pid}/project-tools`);
+      setProjectTools(r.projectTools || []);
+    } catch { setProjectTools([]); }
+  }
+
+  async function loadPendingTRRs() {
+    try {
+      const r = await api(`/api/projects/${pid}/tool-registration-requests`);
+      setPendingTRRs((r.toolRegistrationRequests || []).filter((t) => !["PROVISIONED","CANCELLED"].includes(t.approvalStatus)));
+    } catch { setPendingTRRs([]); }
+  }
+
+  function handleWizardSuccess() {
+    setShowWizard(false);
+    loadProjectTools();
+    loadPendingTRRs();
+    refreshApprovals?.();
+  }
+
+  const displayTools = projectTools.length > 0
+    ? projectTools
+    : (tools.length > 0 ? tools : []);
+
+  const legacyTools = displayTools.filter((t) => !t.mcpToolName);
+  const gatewayTools = displayTools.filter((t) => t.mcpToolName);
 
   return (
-    <section className="panel">
-      <div className="toolbar">
-        <div>
-          <h2>AgentCore Gateway Tool Catalog</h2>
-          <p className="muted">Tools must be registered and approved before agents can request access. High and critical-risk tools require Tool Owner + Platform Admin sign-off.</p>
-        </div>
-        <button className="primary" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? <><X size={14} style={{ marginRight: 4 }} />Cancel</> : <><Plus size={14} style={{ marginRight: 4 }} />Add Tool</>}
-        </button>
-      </div>
-      {showForm && (
-        <AddResourceForm
-          mode="tool"
+    <>
+      {showWizard && (
+        <AddToolWizard
+          project={project}
           pid={pid}
-          onSuccess={() => { setShowForm(false); refreshTools(); refreshApprovals(); }}
-          onCancel={() => setShowForm(false)}
+          onSuccess={handleWizardSuccess}
+          onCancel={() => setShowWizard(false)}
         />
       )}
-      <Table headers={["Tool", "Type", "Endpoint", "Credential Ref", "Risk", "Classification", "Status"]}>
-        {rows.map((tool) => (
-          <tr key={tool.id || tool.name}>
-            <td>
-              <strong>{tool.name || tool.id}</strong>
-              {tool.description && <><br /><span className="muted">{tool.description}</span></>}
-            </td>
-            <td>{TOOL_TYPES[tool.toolType] || "REST API"}</td>
-            <td><span className="muted">{tool.endpoint || "—"}</span></td>
-            <td>{tool.credentialRef ? <code className="secret-ref">{tool.credentialRef}</code> : <span className="muted">—</span>}</td>
-            <td><span className={`risk ${riskClass(tool.riskTier || "medium")}`}>{titleCase(tool.riskTier || "medium")}</span></td>
-            <td>{titleCase(tool.classification || "internal")}</td>
-            <td><Status>{titleCase(tool.status || "approved")}</Status></td>
-          </tr>
-        ))}
-      </Table>
-    </section>
+      <section className="panel">
+        <div className="toolbar">
+          <div>
+            <h2>AgentCore Gateway Tool Catalog</h2>
+            <p className="muted">
+              Tools must be discovered, registered, and approved before agents can use them.
+              Approved tools are provisioned as AgentCore Gateway targets and exposed as MCP tools.
+            </p>
+          </div>
+          <button className="primary" onClick={() => setShowWizard(true)}>
+            <Plus size={14} style={{ marginRight: 4 }} />Add Tool
+          </button>
+        </div>
+
+        {/* Approved Gateway-backed Project Tools */}
+        {gatewayTools.length > 0 && (
+          <>
+            <h3 style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: "var(--muted)" }}>
+              <CheckCircle2 size={13} style={{ marginRight: 5, color: "var(--green)" }} />
+              Approved Project Tools ({gatewayTools.length})
+            </h3>
+            <Table headers={["Tool", "MCP Name", "Gateway", "Side Effect", "Classification", "Status"]}>
+              {gatewayTools.map((tool) => {
+                const se = SIDE_EFFECT_LEVELS[tool.sideEffectLevel] || {};
+                const ts = PROJECT_TOOL_STATUS[tool.toolStatus] || { label: tool.toolStatus, cls: "pass" };
+                return (
+                  <tr key={tool.id}>
+                    <td>
+                      <strong>{tool.displayName || tool.mcpToolName}</strong>
+                      {tool.description && <><br /><span className="muted" style={{ fontSize: 11 }}>{tool.description}</span></>}
+                      <br /><span className="muted" style={{ fontSize: 10 }}>Owner: {tool.businessOwner}</span>
+                    </td>
+                    <td><code style={{ fontSize: 11 }}>{tool.mcpToolName}</code></td>
+                    <td><code style={{ fontSize: 10, wordBreak: "break-all" }}>{tool.gatewayTargetId || "—"}</code></td>
+                    <td><span className={`pill validation-${se.cls || "pass"}`}>{se.label || tool.sideEffectLevel}</span></td>
+                    <td>{titleCase(tool.dataClassification || tool.classification || "internal")}</td>
+                    <td><span className={`pill validation-${ts.cls}`}>{ts.label}</span></td>
+                  </tr>
+                );
+              })}
+            </Table>
+          </>
+        )}
+
+        {/* Legacy / fallback tools */}
+        {legacyTools.length > 0 && (
+          <>
+            <h3 style={{ marginTop: 16, marginBottom: 8, fontSize: 13, color: "var(--muted)" }}>
+              Legacy Tool Records
+            </h3>
+            <Table headers={["Tool", "Type", "Endpoint", "Credential Ref", "Risk", "Status"]}>
+              {legacyTools.map((tool) => (
+                <tr key={tool.id || tool.name}>
+                  <td><strong>{tool.name || tool.id}</strong>{tool.description && <><br /><span className="muted">{tool.description}</span></>}</td>
+                  <td>{TOOL_TYPES[tool.toolType] || "REST API"}</td>
+                  <td><span className="muted">{tool.endpoint || "—"}</span></td>
+                  <td>{tool.credentialRef ? <code className="secret-ref">{tool.credentialRef}</code> : <span className="muted">—</span>}</td>
+                  <td><span className={`risk ${riskClass(tool.riskTier || "medium")}`}>{titleCase(tool.riskTier || "medium")}</span></td>
+                  <td><Status>{titleCase(tool.status || "approved")}</Status></td>
+                </tr>
+              ))}
+            </Table>
+          </>
+        )}
+
+        {gatewayTools.length === 0 && legacyTools.length === 0 && (
+          <div className="empty-state">
+            <Wrench size={20} style={{ opacity: 0.4, marginBottom: 8 }} />
+            <p>No approved tools yet.</p>
+            <p className="muted" style={{ fontSize: 12 }}>Click Add Tool to register a resource from the connected AWS account through the approval workflow.</p>
+          </div>
+        )}
+
+        {/* Pending Registration Requests */}
+        {pendingTRRs.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <h3 style={{ marginBottom: 8, fontSize: 13, color: "var(--muted)" }}>
+              <Clock size={13} style={{ marginRight: 5, color: "var(--amber)" }} />
+              Pending Registration Requests ({pendingTRRs.length})
+            </h3>
+            <Table headers={["Tool Name", "Source Type", "Side Effect", "Requested By", "Approval Status"]}>
+              {pendingTRRs.map((trr) => {
+                const se = SIDE_EFFECT_LEVELS[trr.sideEffectLevel] || {};
+                return (
+                  <tr key={trr.id}>
+                    <td><strong>{trr.requestedToolName}</strong><br /><span className="muted" style={{ fontSize: 11 }}>{trr.requestedDescription}</span></td>
+                    <td><span className="muted">{trr.sourceResourceType || trr.toolType}</span></td>
+                    <td><span className={`pill validation-${se.cls || "pass"}`}>{se.label || trr.sideEffectLevel}</span></td>
+                    <td>{trr.requestedBy}</td>
+                    <td><Status>{trr.approvalStatus}</Status></td>
+                  </tr>
+                );
+              })}
+            </Table>
+          </div>
+        )}
+      </section>
+    </>
   );
 }
 

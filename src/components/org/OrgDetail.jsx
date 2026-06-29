@@ -1,8 +1,10 @@
-import { useState } from "react";
-import { Building2, Plus, FolderOpen, Users, ArrowLeft, ChevronRight, Cloud, Server, CheckCircle2, AlertCircle, Pencil } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Building2, Plus, FolderOpen, Users, ArrowLeft, ChevronRight, Cloud, Server, CheckCircle2, AlertCircle, Pencil, Link2, RefreshCw } from "lucide-react";
 import { Table, Status } from "../shared/index.jsx";
 import { api } from "../../utils.js";
 import { fallback, ORG_ROLES, BEDROCK_MODELS } from "../../constants.js";
+import AwsAccountConnectionForm from "./AwsAccountConnectionForm.jsx";
+import InventoryCatalog from "./InventoryCatalog.jsx";
 
 function ProjectCard({ project, onOpen }) {
   const stats = fallback[project.name] || {};
@@ -327,6 +329,103 @@ function AwsConfigTab({ org, canEdit, onSaved }) {
   );
 }
 
+function ConnectedAccountsTab({ org }) {
+  const [connections, setConnections] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [selectedConn, setSelectedConn] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { loadConnections(); }, [org.id]);
+
+  async function loadConnections() {
+    setLoading(true);
+    try {
+      const r = await api(`/api/organizations/${org.id}/account-connections`);
+      const conns = r.connections || [];
+      setConnections(conns);
+      if (conns.length && !selectedConn) setSelectedConn(conns[0]);
+    } catch { /* offline */ }
+    finally { setLoading(false); }
+  }
+
+  async function handleConnected(conn) {
+    setShowForm(false);
+    await loadConnections();
+    setSelectedConn(conn);
+    // Trigger initial scan
+    try {
+      await api(`/api/organizations/${org.id}/account-connections/${conn.id}/sync`, { method: "POST" });
+      const r2 = await api(`/api/organizations/${org.id}/account-connections`);
+      setConnections(r2.connections || []);
+    } catch { /* */ }
+  }
+
+  if (showForm) {
+    return <AwsAccountConnectionForm orgId={org.id} onSuccess={handleConnected} onCancel={() => setShowForm(false)} />;
+  }
+
+  return (
+    <div>
+      <div className="toolbar" style={{ marginBottom: 16 }}>
+        <div>
+          <h2 style={{ margin: 0 }}>Connected Business Unit Accounts</h2>
+          <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
+            Connect AWS accounts from business units to enable resource discovery.
+            Guardian assumes cross-account roles — no credentials are stored.
+          </p>
+        </div>
+        <button className="primary" onClick={() => setShowForm(true)}>
+          <Link2 size={13} style={{ marginRight: 6 }} />Connect Account
+        </button>
+      </div>
+
+      {loading && <p className="muted">Loading connections…</p>}
+
+      {!loading && connections.length === 0 && (
+        <div className="empty-state" style={{ border: "1px dashed var(--border)" }}>
+          <Link2 size={24} style={{ marginBottom: 10, opacity: 0.4 }} />
+          <strong>No accounts connected</strong>
+          <p className="muted">Connect a BU AWS account to discover APIs, Lambda functions, and knowledge bases for this organization.</p>
+        </div>
+      )}
+
+      {connections.length > 0 && (
+        <div className="conn-layout">
+          {/* Connection list sidebar */}
+          <div className="conn-sidebar">
+            {connections.map((conn) => (
+              <button
+                key={conn.id}
+                className={`conn-card ${selectedConn?.id === conn.id ? "conn-card--active" : ""}`}
+                onClick={() => setSelectedConn(conn)}
+              >
+                <div className="conn-card-header">
+                  <div className={`conn-status-dot conn-status-dot--${conn.status === "CONNECTED" ? "green" : "amber"}`} />
+                  <strong>{conn.accountName || conn.awsAccountId}</strong>
+                </div>
+                <code className="muted" style={{ fontSize: 11 }}>{conn.awsAccountId}</code>
+                <span className="muted" style={{ fontSize: 11 }}>{conn.environment} · {conn.enabledRegions?.join(", ")}</span>
+                <span className={`pill ${conn.status === "CONNECTED" ? "pill--green" : "pill--amber"}`} style={{ marginTop: 4, fontSize: 10 }}>{conn.status}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Inventory catalog for selected connection */}
+          <div style={{ flex: 1 }}>
+            {selectedConn && (
+              <InventoryCatalog
+                orgId={org.id}
+                connection={selectedConn}
+                onAddToProject={() => {}}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function OrgDetail({ org, onBack, onOpenProject, onCreateProject, refreshOrg, currentUser = "platform-admin@example.com" }) {
   const [activeTab, setActiveTab] = useState("projects");
   const [showAddMember, setShowAddMember] = useState(false);
@@ -364,7 +463,8 @@ export default function OrgDetail({ org, onBack, onOpenProject, onCreateProject,
         {[
           ["projects", "Projects"],
           ["members", "Members & Roles"],
-          ["aws", "AWS Configuration"],
+          ["accounts", "Connected Accounts"],
+          ["aws", "Platform AWS Config"],
         ].map(([id, label]) => (
           <button key={id} className={`org-tab ${activeTab === id ? "active" : ""}`} onClick={() => setActiveTab(id)}>
             {label}
@@ -424,6 +524,13 @@ export default function OrgDetail({ org, onBack, onOpenProject, onCreateProject,
               </tr>
             ))}
           </Table>
+        </section>
+      )}
+
+      {/* Connected Accounts tab */}
+      {activeTab === "accounts" && (
+        <section className="panel">
+          <ConnectedAccountsTab org={org} />
         </section>
       )}
 

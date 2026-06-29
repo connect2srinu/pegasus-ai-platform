@@ -5,6 +5,40 @@ const yaml = require("js-yaml");
 const { generateStrands } = require("./codegen/strands-generator.cjs");
 const { validateCrewAIPackage } = require("./validation/crewai-validator.cjs");
 const { generateAgentCoreWrapper } = require("./codegen/agentcore-wrapper-generator.cjs");
+const { runInventorySync, runMockInventorySync } = require("./services/inventory-scanner.cjs");
+const {
+  resolveLocalAwsContext,
+  getLocalAwsContext,
+  isLocalAwsMode,
+  buildSingleAccountAwsConfig,
+} = require("./services/aws-client.cjs");
+const {
+  listAvailableModels,
+  listAvailableModelIds,
+} = require("./services/bedrock-client.cjs");
+const {
+  deployAgent,
+  getAgentRuntime,
+  getRuntimeEndpoint,
+  invokeAgentRuntime,
+  listAgentRuntimes,
+} = require("./services/agentcore-client.cjs");
+
+// Load .env.local if present (local dev only — never committed)
+const envLocalPath = path.resolve(__dirname, "..", ".env.local");
+if (fs.existsSync(envLocalPath)) {
+  const lines = fs.readFileSync(envLocalPath, "utf8").split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const val = trimmed.slice(eq + 1).trim();
+    if (key && !(key in process.env)) process.env[key] = val; // don't override real env
+  }
+  console.log("[server] Loaded .env.local");
+}
 
 const root = path.resolve(__dirname, "..");
 const staticRoot = fs.existsSync(path.join(root, "dist")) ? path.join(root, "dist") : root;
@@ -35,6 +69,13 @@ const projectCatalog = {
     tools: { member_lookup: "medium", benefits_lookup: "low" },
     knowledge: { "member-benefits-kb": "internal" },
     allowedAgentTypes: ["bedrock_agentcore", "openai_agent", "strands", "custom"],
+  },
+  // Local dev project — open to all agent types and any user, no tool/KB restrictions
+  "local-test-project": {
+    users: { "platform-admin@example.com": "platform_admin", "srini_gadi@example.com": "project_owner", "current-user@example.com": "project_owner" },
+    tools: {},
+    knowledge: {},
+    allowedAgentTypes: ["bedrock_agentcore", "langgraph", "openai_agent", "crewai", "strands", "custom"],
   },
 };
 
@@ -152,6 +193,41 @@ const SEED_ORGS = [
     awsConfig: null,
   },
 ];
+
+// ── Local dev org — seeded when LOCAL_AWS_MODE=true ───────────────────────────
+// accountId/region/ARNs are placeholders; startup patches them from STS at runtime.
+const SEED_LOCAL_ORG = {
+  id: "local-dev",
+  name: "Local Dev",
+  description: "Single-account local testing org. AWS config is populated from ~/.aws/credentials at startup.",
+  createdBy: "platform-admin@example.com",
+  createdAt: new Date().toISOString(),
+  members: [
+    { userId: "platform-admin@example.com", role: "org_admin" },
+  ],
+  projects: [
+    { id: "local-test-project", name: "Test Project", description: "Default project for local single-account testing." },
+  ],
+  awsConfig: {
+    modelAccount: {
+      accountId: "PENDING",
+      region: process.env.AWS_REGION || "us-east-1",
+      label: "Local Dev — Bedrock (same account)",
+      crossAccountRoleArn: null,
+      allowedModelIds: [],
+    },
+    executionAccount: {
+      accountId: "PENDING",
+      region: process.env.AWS_REGION || "us-east-1",
+      label: "Local Dev — AgentCore Execution (same account)",
+      agentCoreExecutionRoleArn: null,
+      ecrRepositoryPrefix: null,
+      s3ArtifactBucket: null,
+      networkConfig: null,
+    },
+  },
+  _isLocalDevOrg: true,
+};
 
 const SEED_AGENTS = [
   // ── Claims Operations ────────────────────────────────────────────────────
@@ -386,6 +462,171 @@ const SEED_DEPLOYMENTS = [
   },
 ];
 
+const SEED_ACCOUNT_CONNECTIONS = [
+  {
+    id: "conn-acme-health-bu-001",
+    organizationId: "acme-health",
+    awsAccountId: "555666777888",
+    accountName: "Acme Health – Business Unit Account",
+    environment: "production",
+    discoveryRoleArn: "arn:aws:iam::555666777888:role/GuardianDiscoveryRole",
+    provisioningRoleArn: "arn:aws:iam::555666777888:role/GuardianProvisioningRole",
+    externalIdRef: "sm/guardian-acme-health-external-id",
+    enabledRegions: ["us-east-1"],
+    agentCoreGatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001",
+    agentCoreGatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+    status: "CONNECTED",
+    lastSuccessfulSyncAt: "2025-05-01T06:00:00Z",
+    createdBy: "platform-admin@example.com",
+    createdAt: "2025-02-15T10:00:00Z",
+    updatedAt: "2025-05-01T06:00:00Z",
+  },
+];
+
+// Seed project tools — these are the post-approval, post-provisioning canonical tool records
+const SEED_PROJECT_TOOLS = [
+  {
+    id: "ptool-claim-lookup-v1",
+    organizationId: "acme-health",
+    projectId: "claims-operations",
+    toolRegistrationRequestId: null,
+    sourceDiscoveredResourceId: null, // set during real sync
+    gatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001",
+    gatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+    gatewayTargetId: "tgt-claims-lookup",
+    mcpToolName: "claim_lookup",
+    displayName: "Claim Lookup",
+    description: "Look up claim details, status, and processing history by claim ID.",
+    inputSchemaJson: JSON.stringify({ type: "object", properties: { claim_id: { type: "string", description: "Claim identifier" } }, required: ["claim_id"] }),
+    outputSchemaJson: JSON.stringify({ type: "object", properties: { claim: { type: "object" }, status: { type: "string" } } }),
+    sideEffectLevel: "READ_ONLY",
+    dataClassification: "internal",
+    riskTier: "medium",
+    businessOwner: "priya@example.com",
+    toolStatus: "ACTIVE",
+    version: "1.0.0",
+    checksum: "sha256:claimlookupv1abc",
+    lastValidatedAt: "2025-05-01T06:00:00Z",
+    createdAt: "2025-03-01T09:00:00Z",
+    updatedAt: "2025-05-01T06:00:00Z",
+  },
+  {
+    id: "ptool-policy-lookup-v1",
+    organizationId: "acme-health",
+    projectId: "claims-operations",
+    toolRegistrationRequestId: null,
+    sourceDiscoveredResourceId: null,
+    gatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001",
+    gatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+    gatewayTargetId: "tgt-policy-lookup",
+    mcpToolName: "policy_lookup",
+    displayName: "Policy Lookup",
+    description: "Retrieve insurance policy details and coverage terms by policy number.",
+    inputSchemaJson: JSON.stringify({ type: "object", properties: { policy_number: { type: "string" } }, required: ["policy_number"] }),
+    outputSchemaJson: null,
+    sideEffectLevel: "READ_ONLY",
+    dataClassification: "internal",
+    riskTier: "low",
+    businessOwner: "priya@example.com",
+    toolStatus: "ACTIVE",
+    version: "1.0.0",
+    checksum: "sha256:policylookupv1def",
+    lastValidatedAt: "2025-05-01T06:00:00Z",
+    createdAt: "2025-03-01T09:00:00Z",
+    updatedAt: "2025-05-01T06:00:00Z",
+  },
+  {
+    id: "ptool-member-lookup-v1",
+    organizationId: "acme-health",
+    projectId: "member-services",
+    toolRegistrationRequestId: null,
+    sourceDiscoveredResourceId: null,
+    gatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001",
+    gatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+    gatewayTargetId: "tgt-member-lookup",
+    mcpToolName: "member_lookup",
+    displayName: "Member Lookup",
+    description: "Look up member profile, enrollment, and plan details.",
+    inputSchemaJson: JSON.stringify({ type: "object", properties: { member_id: { type: "string" } }, required: ["member_id"] }),
+    outputSchemaJson: null,
+    sideEffectLevel: "READ_ONLY",
+    dataClassification: "internal",
+    riskTier: "medium",
+    businessOwner: "devon@example.com",
+    toolStatus: "ACTIVE",
+    version: "1.0.0",
+    checksum: "sha256:memberlookupv1ghi",
+    lastValidatedAt: "2025-05-01T06:00:00Z",
+    createdAt: "2025-03-10T09:00:00Z",
+    updatedAt: "2025-05-01T06:00:00Z",
+  },
+  {
+    id: "ptool-benefits-lookup-v1",
+    organizationId: "acme-health",
+    projectId: "member-services",
+    toolRegistrationRequestId: null,
+    sourceDiscoveredResourceId: null,
+    gatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001",
+    gatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+    gatewayTargetId: "tgt-benefits-lookup",
+    mcpToolName: "benefits_lookup",
+    displayName: "Benefits Lookup",
+    description: "Look up benefits eligibility, coverage limits, and formulary details.",
+    inputSchemaJson: JSON.stringify({ type: "object", properties: { member_id: { type: "string" }, benefit_type: { type: "string" } }, required: ["member_id"] }),
+    outputSchemaJson: null,
+    sideEffectLevel: "READ_ONLY",
+    dataClassification: "internal",
+    riskTier: "low",
+    businessOwner: "devon@example.com",
+    toolStatus: "ACTIVE",
+    version: "1.0.0",
+    checksum: "sha256:benefitslookupv1jkl",
+    lastValidatedAt: "2025-05-01T06:00:00Z",
+    createdAt: "2025-03-10T09:00:00Z",
+    updatedAt: "2025-05-01T06:00:00Z",
+  },
+  {
+    id: "ptool-payment-post-v1",
+    organizationId: "acme-health",
+    projectId: "billing-experience",
+    toolRegistrationRequestId: null,
+    sourceDiscoveredResourceId: null,
+    gatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001",
+    gatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+    gatewayTargetId: "tgt-payment-post",
+    mcpToolName: "payment_post",
+    displayName: "Payment Post",
+    description: "Post a payment transaction against an invoice. WRITE operation — modifies billing records and triggers payment gateway.",
+    inputSchemaJson: JSON.stringify({ type: "object", properties: { invoice_id: { type: "string" }, amount_cents: { type: "integer" }, payment_method_token: { type: "string" } }, required: ["invoice_id", "amount_cents", "payment_method_token"] }),
+    outputSchemaJson: null,
+    sideEffectLevel: "WRITE",
+    dataClassification: "confidential",
+    riskTier: "critical",
+    businessOwner: "marcus@example.com",
+    toolStatus: "ACTIVE",
+    version: "1.2.1",
+    checksum: "sha256:paymentpostv121mno",
+    lastValidatedAt: "2025-05-01T06:00:00Z",
+    createdAt: "2025-04-01T09:00:00Z",
+    updatedAt: "2025-05-01T06:00:00Z",
+  },
+];
+
+function makeVisible(resource, projectId, organizationId, addedBy) {
+  return {
+    id: `pvr-${projectId}-${resource.id}`,
+    organizationId,
+    projectId,
+    discoveredResourceId: resource.id,
+    resourceType: resource.resourceType,
+    resourceName: resource.resourceName,
+    resourceArn: resource.resourceArn,
+    visibilityStatus: "VISIBLE",
+    addedBy,
+    addedAt: now(),
+  };
+}
+
 function ensureRegistry() {
   fs.mkdirSync(dataDir, { recursive: true });
   if (!fs.existsSync(registryPath)) {
@@ -401,9 +642,24 @@ function ensureRegistry() {
   registry.deployments ||= [];
   registry.awsAccountMappings ||= [];
   registry.invocations ||= [];
+  // Phase 1-3 collections
+  registry.awsAccountConnections   ||= [];
+  registry.inventorySyncRuns       ||= [];
+  registry.discoveredResources     ||= [];
+  registry.projectVisibleResources ||= [];
+  registry.toolRegistrationRequests||= [];
+  registry.gatewayTargetDeployments||= [];
+  registry.projectTools            ||= [];
   // Seed orgs if empty
   if (registry.organizations.length === 0) {
     registry.organizations = SEED_ORGS;
+  }
+  // Add local-dev org if LOCAL_AWS_MODE is on and not already present
+  if (process.env.LOCAL_AWS_MODE === "true") {
+    const hasLocalOrg = registry.organizations.some((o) => o.id === "local-dev");
+    if (!hasLocalOrg) {
+      registry.organizations.push({ ...SEED_LOCAL_ORG });
+    }
   }
   // Seed agents if empty
   if (registry.agents.length === 0) {
@@ -412,6 +668,32 @@ function ensureRegistry() {
   // Seed deployments if empty
   if (registry.deployments.length === 0) {
     registry.deployments = SEED_DEPLOYMENTS;
+  }
+  // Seed account connections if empty
+  if (registry.awsAccountConnections.length === 0) {
+    registry.awsAccountConnections = SEED_ACCOUNT_CONNECTIONS;
+    // Run initial inventory scan for the seeded connection
+    const conn = { ...SEED_ACCOUNT_CONNECTIONS[0], _firstSync: true };
+    // Seed with mock data synchronously; Sync Now button triggers real AWS scan
+    const { syncRun, resources } = runMockInventorySync(conn, conn.organizationId);
+    registry.inventorySyncRuns.push(syncRun);
+    registry.discoveredResources = resources;
+    // Seed project visibility — wire known resources to their projects
+    const claimsApiGw = resources.find((r) => r.resourceName === "ClaimsProcessingAPI");
+    const memberApiGw = resources.find((r) => r.resourceName === "MemberServicesAPI");
+    const billingApiGw = resources.find((r) => r.resourceName === "BillingPaymentsAPI");
+    const projectVisibility = [
+      ...(resources.filter((r) => ["claims-lookup-fn","policy-lookup-fn"].includes(r.resourceId) || r.resourceId === "tgt-claims-lookup" || r.resourceId === "tgt-policy-lookup" || r.resourceId === "CLMSPOL001").map((r) => makeVisible(r, "claims-operations", conn.organizationId, "platform-admin@example.com"))),
+      ...(resources.filter((r) => ["member-lookup-fn","benefits-lookup-fn"].includes(r.resourceId) || r.resourceId === "tgt-member-lookup" || r.resourceId === "MEMBEN002").map((r) => makeVisible(r, "member-services", conn.organizationId, "platform-admin@example.com"))),
+      ...(resources.filter((r) => ["payment-post-fn"].includes(r.resourceId) || r.resourceId === "BILLING003").map((r) => makeVisible(r, "billing-experience", conn.organizationId, "platform-admin@example.com"))),
+      // The gateway itself is visible to all projects
+      ...(resources.filter((r) => r.resourceType === "AGENTCORE_GATEWAY").map((r) => makeVisible(r, "claims-operations", conn.organizationId, "platform-admin@example.com"))),
+    ];
+    registry.projectVisibleResources = projectVisibility;
+  }
+  // Seed project tools if empty
+  if (registry.projectTools.length === 0) {
+    registry.projectTools = SEED_PROJECT_TOOLS;
   }
   fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2));
 }
@@ -488,6 +770,7 @@ function specFromPayload(payload) {
     name: payload.name,
     description: payload.description || "",
     projectId,
+    organizationId: payload.organizationId || null,
     owner: payload.owner || {
       userId: payload.ownerUserId || "current-user@example.com",
       businessUnit: payload.businessUnit || payload.projectName || projectId,
@@ -650,6 +933,7 @@ function buildAgentFromSpec(spec, source = "form", submitter = spec.owner?.userI
   const agent = {
     id: spec.id,
     projectId: spec.projectId,
+    organizationId: spec.organizationId || null,
     name: spec.name,
     description: spec.description,
     ownerUserId: spec.owner?.userId || submitter,
@@ -718,6 +1002,7 @@ function agentSummary(agent) {
     name: agent.name,
     description: agent.description,
     version: version.semanticVersion,
+    versionId: version.id,
     runtime: displayAgentType(version.agentType),
     agentType: version.agentType,
     lifecycle: version.lifecycleState,
@@ -752,6 +1037,46 @@ async function handleApi(req, res, requestUrl) {
   const parts = requestUrl.pathname.split("/").filter(Boolean);
 
   if (req.method === "GET" && requestUrl.pathname === "/api/health") return sendJson(res, 200, { status: "ok", service: `${platformSlug}-control-plane`, platformName, root, registryPath });
+
+  // ── GET /api/local/aws-context — returns resolved AWS identity and capabilities ──
+  if (req.method === "GET" && requestUrl.pathname === "/api/local/aws-context") {
+    const ctx = getLocalAwsContext();
+    if (!ctx) {
+      return sendJson(res, 200, {
+        localAwsMode: false,
+        message: "LOCAL_AWS_MODE is not enabled. Set LOCAL_AWS_MODE=true in .env.local to activate real AWS integration.",
+      });
+    }
+    const localOrg = (registry.organizations || []).find((o) => o.id === "local-dev");
+    const modelIds = localOrg?.awsConfig?.modelAccount?.allowedModelIds || [];
+    return sendJson(res, 200, {
+      localAwsMode: true,
+      accountId: ctx.accountId,
+      region: ctx.region,
+      callerArn: ctx.callerArn,
+      userType: ctx.userType,
+      bedrockModels: modelIds,
+      bedrockModelCount: modelIds.length,
+      agentCoreExecutionRoleArn: localOrg?.awsConfig?.executionAccount?.agentCoreExecutionRoleArn || null,
+      ecrRepositoryPrefix: localOrg?.awsConfig?.executionAccount?.ecrRepositoryPrefix || null,
+      s3ArtifactBucket: localOrg?.awsConfig?.executionAccount?.s3ArtifactBucket || null,
+      localOrgId: localOrg?.id || null,
+      localProjectId: localOrg?.projects?.[0]?.id || null,
+      iamRequirements: [
+        "bedrock:ListFoundationModels",
+        "bedrock:InvokeModel",
+        "bedrock-agentcore:CreateAgent",
+        "bedrock-agentcore:InvokeAgent",
+        "sts:GetCallerIdentity",
+        "ecr:GetAuthorizationToken",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:PutImage",
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+      ],
+    });
+  }
   if (req.method === "GET" && parts[1] === "projects" && parts[3] === "agents") return sendJson(res, 200, { agents: registry.agents.filter((agent) => agent.projectId === parts[2]).map(agentSummary) });
   if (req.method === "GET" && requestUrl.pathname === "/api/agents") {
     const projectId = requestUrl.searchParams.get("projectId");
@@ -805,6 +1130,23 @@ async function handleApi(req, res, requestUrl) {
     task.comments = payload.comments || "";
     task.approver = payload.approver || "current-reviewer@example.com";
     task.decidedAt = now();
+
+    // Handle tool registration request approval tasks
+    if (task.taskCategory === "tool_registration" && task.toolRegistrationRequestId) {
+      const trr = (registry.toolRegistrationRequests || []).find((r) => r.id === task.toolRegistrationRequestId);
+      if (trr) {
+        const trrTasks = registry.approvalTasks.filter((t) => t.toolRegistrationRequestId === trr.id);
+        if (trrTasks.some((t) => t.status === "rejected")) {
+          trr.approvalStatus = "REJECTED";
+        } else if (trrTasks.every((t) => t.status === "approved")) {
+          trr.approvalStatus = "APPROVED";
+        }
+        trr.updatedAt = now();
+      }
+      addAudit(registry, "approval.decided", { taskId: task.id, decision: task.decision, trrId: task.toolRegistrationRequestId, taskCategory: "tool_registration" });
+      writeRegistry(registry);
+      return sendJson(res, 200, { approvalTask: task, toolRegistrationRequest: trr || null });
+    }
 
     // Handle resource (tool / KB) approval tasks
     if (task.resourceId) {
@@ -1079,6 +1421,66 @@ async function handleApi(req, res, requestUrl) {
     return sendJson(res, 201, { project, orgId: org.id });
   }
 
+  // GET /api/local/runtimes — list real AgentCore runtimes in the account (local mode only)
+  if (req.method === "GET" && requestUrl.pathname === "/api/local/runtimes") {
+    if (!isLocalAwsMode()) return sendJson(res, 200, { localAwsMode: false, runtimes: [] });
+    try {
+      const runtimes = await listAgentRuntimes();
+      return sendJson(res, 200, { localAwsMode: true, runtimes });
+    } catch (err) {
+      return sendJson(res, 500, { error: err.message });
+    }
+  }
+
+  // GET /api/bedrock/models?orgId= — list available Bedrock foundation models
+  // In local AWS mode: returns real models from the account.
+  // In mock mode: returns the org's configured allowedModelIds as simple objects.
+  if (req.method === "GET" && parts[1] === "bedrock" && parts[2] === "models") {
+    const orgId = requestUrl.searchParams.get("orgId");
+    if (isLocalAwsMode()) {
+      // Re-fetch live (cached after first call)
+      const models = await listAvailableModels();
+      return sendJson(res, 200, { models, source: "aws_bedrock_live", localAwsMode: true });
+    }
+    // Mock mode: derive from org config
+    const registry = readRegistry();
+    const org = orgId ? (registry.organizations || []).find((o) => o.id === orgId) : null;
+    const modelIds = org?.awsConfig?.modelAccount?.allowedModelIds || [
+      "anthropic.claude-3-5-sonnet-20241022-v2:0",
+      "anthropic.claude-3-5-haiku-20241022-v1:0",
+      "amazon.nova-pro-v1:0",
+    ];
+    const models = modelIds.map((id) => ({
+      modelId: id,
+      modelName: id.split(".").slice(1).join("."),
+      providerName: id.split(".")[0],
+      inputModalities: ["TEXT"],
+      outputModalities: ["TEXT"],
+      inferenceTypesSupported: ["ON_DEMAND"],
+      isRecommended: id.startsWith("anthropic.claude"),
+    }));
+    return sendJson(res, 200, { models, source: "mock", localAwsMode: false });
+  }
+
+  // GET /api/organizations/:orgId/aws-config — returns config + available Bedrock models
+  if (req.method === "GET" && parts[1] === "organizations" && parts[2] && parts[3] === "aws-config") {
+    const registry = readRegistry();
+    const org = (registry.organizations || []).find((o) => o.id === parts[2]);
+    if (!org) return sendJson(res, 404, { error: "Organization not found." });
+    const awsCtx = getLocalAwsContext();
+    let config = org.awsConfig;
+    // In local mode, if this org has PENDING placeholders, surface resolved values without persisting
+    if (isLocalAwsMode() && awsCtx && config?.executionAccount?.accountId === "PENDING") {
+      config = buildSingleAccountAwsConfig(awsCtx.accountId, awsCtx.region);
+    }
+    return sendJson(res, 200, {
+      awsConfig: config,
+      localAwsMode: isLocalAwsMode(),
+      resolvedAccountId: awsCtx?.accountId || null,
+      resolvedRegion: awsCtx?.region || null,
+    });
+  }
+
   // PUT /api/organizations/:orgId/aws-config
   if (req.method === "PUT" && parts[1] === "organizations" && parts[2] && parts[3] === "aws-config") {
     const body = await readBody(req);
@@ -1348,56 +1750,184 @@ async function handleApi(req, res, requestUrl) {
     }
 
     const org = (registry.organizations || []).find((o) => o.id === agent.organizationId);
-    const orgConfig = org?.awsConfig;
+    let orgConfig = org?.awsConfig;
+
+    // In local AWS mode: use resolved AWS context directly when org config is absent or has PENDING values
+    if (isLocalAwsMode()) {
+      const awsCtx = getLocalAwsContext();
+      if (awsCtx && (!orgConfig || orgConfig.executionAccount?.accountId === "PENDING" || !orgConfig.executionAccount?.accountId)) {
+        orgConfig = buildSingleAccountAwsConfig(awsCtx.accountId, awsCtx.region);
+      }
+    }
+
     if (!orgConfig?.executionAccount?.accountId) {
-      return sendJson(res, 422, { error: "Deployment blocked: organization AWS accounts are not configured." });
+      return sendJson(res, 422, {
+        error: isLocalAwsMode()
+          ? "Deployment blocked: local AWS context not resolved. Check ~/.aws/credentials and AWS_REGION."
+          : "Deployment blocked: organization AWS accounts are not configured.",
+      });
     }
 
     const body = await readBody(req);
     const deploymentId = `dep-${agent.id}-${Date.now()}`;
-    const fakeRuntimeId = `agentcore-${slug(agent.name)}-${Date.now()}`;
-    const fakeArn = `arn:aws:bedrock-agentcore:${orgConfig.executionAccount.region}:${orgConfig.executionAccount.accountId}:runtime/${fakeRuntimeId}`;
+    const deployedBy = body.deployedBy || "platform-admin@example.com";
+    const awsCtx = getLocalAwsContext();
+    const bucket = orgConfig.executionAccount.s3ArtifactBucket || `pegasus-agent-artifacts-${orgConfig.executionAccount.accountId}`;
+    const roleArn = orgConfig.executionAccount.agentCoreExecutionRoleArn;
 
-    const deployment = {
-      id: deploymentId,
-      agentId: agent.id,
-      agentVersionId: version.id,
-      runtimeProvider: "bedrock_agentcore",
-      organizationId: agent.organizationId,
-      projectId: agent.projectId,
-      executionAccountId: orgConfig.executionAccount.accountId,
-      modelAccountId: orgConfig.modelAccount.accountId,
-      region: orgConfig.executionAccount.region,
-      runtimeId: fakeRuntimeId,
-      runtimeArn: fakeArn,
-      ecrImageUri: `${orgConfig.executionAccount.ecrRepositoryPrefix}/${slug(agent.name)}:${version.semanticVersion}`,
-      deploymentStatus: "deployed",
-      deploymentLogs: [
-        `[${now()}] Package retrieved from ${version.package?.packageLocation || "upload"}.`,
-        `[${now()}] Docker image built and pushed to ECR.`,
-        `[${now()}] AgentCore runtime created in ${orgConfig.executionAccount.region}.`,
-        `[${now()}] Cross-account model role assumed in account ${orgConfig.modelAccount.accountId}.`,
-        `[${now()}] Runtime status: ACTIVE. ARN: ${fakeArn}`,
-      ],
-      deployedBy: body.deployedBy || "platform-admin@example.com",
-      deployedAt: now(),
-      updatedAt: now(),
-    };
+    if (isLocalAwsMode()) {
+      // ── REAL AgentCore deployment ────────────────────────────────────────────
+      const deploymentLogs = [];
+      const onLog = (msg) => deploymentLogs.push(msg);
 
-    registry.deployments = registry.deployments || [];
-    registry.deployments.push(deployment);
+      // Build a safe runtime name: alphanum + underscore, start with letter, max 48 chars
+      const runtimeName = `peg${slug(agent.name).replace(/-/g, "_").replace(/[^a-zA-Z0-9_]/g, "").slice(0, 44)}`;
+      const s3Prefix = `agents/${agent.id}/${version.semanticVersion}/`;
 
-    version.deploymentStatus = "deployed";
-    version.lifecycleState = "deployed";
-    version.deploymentId = deploymentId;
-    version.updatedAt = now();
-    agent.currentApprovedVersionId = version.id;
-    agent.updatedAt = now();
+      // Use generated Strands code if available, otherwise a minimal stub
+      const agentCode = version.generatedCode?.strandsPy
+        || version.generatedCode?.agentPy
+        || `# Auto-generated stub for ${agent.name} v${version.semanticVersion}\nimport json\n\ndef handler(event, context):\n    return {"output": "Agent ${agent.name} invoked", "input": event}\n`;
 
-    addAudit(registry, "crewai.version.deployed", { agentId: agent.id, versionId: version.id, deploymentId, runtimeArn: fakeArn });
-    writeRegistry(registry);
+      // Create a provisional deployment record immediately so the UI shows "deploying"
+      const provisionalDeployment = {
+        id: deploymentId,
+        agentId: agent.id,
+        agentVersionId: version.id,
+        runtimeProvider: "bedrock_agentcore",
+        organizationId: agent.organizationId,
+        projectId: agent.projectId,
+        executionAccountId: orgConfig.executionAccount.accountId,
+        modelAccountId: orgConfig.modelAccount.accountId,
+        region: orgConfig.executionAccount.region,
+        deploymentStatus: "deploying",
+        localAwsMode: true,
+        deploymentLogs: [`[${now()}] Deploy started. Account: ${awsCtx.accountId}, Region: ${awsCtx.region}`],
+        deployedBy,
+        deployedAt: now(),
+        updatedAt: now(),
+      };
+      registry.deployments = registry.deployments || [];
+      registry.deployments.push(provisionalDeployment);
+      version.deploymentStatus = "deploying";
+      version.deploymentId = deploymentId;
+      writeRegistry(registry);
 
-    return sendJson(res, 200, { deployment, agent: agentSummary(agent), message: `Agent '${agent.name}' deployed successfully to AgentCore Runtime.` });
+      // Run the real deploy asynchronously — client gets immediate 202, polls for status
+      (async () => {
+        try {
+          const result = await deployAgent({
+            runtimeName,
+            roleArn,
+            bucket,
+            s3Prefix,
+            agentCode,
+            entryFileName: "agent.py",
+            entryPoint: ["python", "agent.py"],
+            pythonRuntime: "PYTHON_3_12",
+            description: `${agent.name} v${version.semanticVersion} — deployed by ${platformName}`,
+            environmentVariables: {
+              AGENT_NAME: agent.name,
+              AGENT_VERSION: version.semanticVersion,
+              MODEL_ID: version.modelId || "anthropic.claude-3-5-haiku-20241022-v1:0",
+              PLATFORM: platformSlug,
+            },
+            onLog,
+          });
+
+          // Update registry with real ARN + endpoint
+          const reg = readRegistry();
+          const dep = (reg.deployments || []).find((d) => d.id === deploymentId);
+          const ag = reg.agents.find((a) => a.id === agent.id);
+          const ver = (ag?.versions || []).find((v) => v.id === version.id);
+          if (dep) {
+            dep.deploymentStatus = "deployed";
+            dep.runtimeId = result.agentRuntimeId;
+            dep.runtimeArn = result.agentRuntimeArn;
+            dep.agentRuntimeEndpointId = result.agentRuntimeEndpointId;
+            dep.s3CodeLocation = result.s3CodeLocation;
+            dep.deploymentLogs = deploymentLogs;
+            dep.updatedAt = now();
+          }
+          if (ver) {
+            ver.deploymentStatus = "deployed";
+            ver.lifecycleState = "deployed";
+            ver.updatedAt = now();
+          }
+          if (ag) {
+            ag.currentApprovedVersionId = version.id;
+            ag.updatedAt = now();
+          }
+          addAudit(reg, "agent.deployed.real", { agentId: agent.id, versionId: version.id, deploymentId, runtimeArn: result.agentRuntimeArn });
+          writeRegistry(reg);
+          console.log(`[deploy] ${agent.name} deployed successfully. Runtime: ${result.agentRuntimeArn}`);
+        } catch (err) {
+          console.error(`[deploy] FAILED for ${agent.name}: ${err.message}`);
+          const reg = readRegistry();
+          const dep = (reg.deployments || []).find((d) => d.id === deploymentId);
+          const ver = ((reg.agents.find((a) => a.id === agent.id))?.versions || []).find((v) => v.id === version.id);
+          if (dep) { dep.deploymentStatus = "failed"; dep.deploymentError = err.message; dep.deploymentLogs = [...deploymentLogs, `[${now()}] ERROR: ${err.message}`]; dep.updatedAt = now(); }
+          if (ver) { ver.deploymentStatus = "failed"; ver.updatedAt = now(); }
+          addAudit(reg, "agent.deployed.failed", { agentId: agent.id, versionId: version.id, deploymentId, error: err.message });
+          writeRegistry(reg);
+        }
+      })();
+
+      return sendJson(res, 202, {
+        deployment: provisionalDeployment,
+        agent: agentSummary(agent),
+        message: `Deployment started for '${agent.name}'. Poll GET /api/agents/${agent.id}/deployments/${deploymentId} for status.`,
+        deploymentId,
+        localAwsMode: true,
+      });
+
+    } else {
+      // ── MOCK deployment (non-local mode) ────────────────────────────────────
+      const runtimeId = `agentcore-${slug(agent.name)}-${Date.now()}`;
+      const runtimeArn = `arn:aws:bedrock-agentcore:${orgConfig.executionAccount.region}:${orgConfig.executionAccount.accountId}:runtime/${runtimeId}`;
+      const ecrPrefix = orgConfig.executionAccount.ecrRepositoryPrefix || `${orgConfig.executionAccount.accountId}.dkr.ecr.${orgConfig.executionAccount.region}.amazonaws.com/pegasus`;
+
+      const deployment = {
+        id: deploymentId,
+        agentId: agent.id,
+        agentVersionId: version.id,
+        runtimeProvider: "bedrock_agentcore",
+        organizationId: agent.organizationId,
+        projectId: agent.projectId,
+        executionAccountId: orgConfig.executionAccount.accountId,
+        modelAccountId: orgConfig.modelAccount.accountId,
+        region: orgConfig.executionAccount.region,
+        runtimeId,
+        runtimeArn,
+        ecrImageUri: `${ecrPrefix}/${slug(agent.name)}:${version.semanticVersion}`,
+        deploymentStatus: "deployed",
+        localAwsMode: false,
+        deploymentLogs: [
+          `[${now()}] Package retrieved from ${version.package?.packageLocation || "upload"}.`,
+          `[${now()}] Docker image built and pushed to ECR.`,
+          `[${now()}] AgentCore runtime created in ${orgConfig.executionAccount.region}.`,
+          `[${now()}] Cross-account model role assumed in account ${orgConfig.modelAccount.accountId}.`,
+          `[${now()}] Runtime status: ACTIVE. ARN: ${runtimeArn}`,
+        ],
+        deployedBy,
+        deployedAt: now(),
+        updatedAt: now(),
+      };
+
+      registry.deployments = registry.deployments || [];
+      registry.deployments.push(deployment);
+      version.deploymentStatus = "deployed";
+      version.lifecycleState = "deployed";
+      version.deploymentId = deploymentId;
+      version.updatedAt = now();
+      agent.currentApprovedVersionId = version.id;
+      agent.updatedAt = now();
+
+      addAudit(registry, "crewai.version.deployed", { agentId: agent.id, versionId: version.id, deploymentId, runtimeArn });
+      writeRegistry(registry);
+
+      return sendJson(res, 200, { deployment, agent: agentSummary(agent), message: `Agent '${agent.name}' deployed successfully to AgentCore Runtime.` });
+    }
   }
 
   // GET /api/agents/:agentId/deployments
@@ -1405,6 +1935,28 @@ async function handleApi(req, res, requestUrl) {
     const registry = readRegistry();
     const deployments = (registry.deployments || []).filter((d) => d.agentId === parts[2]);
     return sendJson(res, 200, { deployments });
+  }
+
+  // GET /api/agents/:agentId/deployments/:deploymentId — polling endpoint
+  if (req.method === "GET" && parts[1] === "agents" && parts[3] === "deployments" && parts[4]) {
+    const registry = readRegistry();
+    const deployment = (registry.deployments || []).find((d) => d.id === parts[4] && d.agentId === parts[2]);
+    if (!deployment) return sendJson(res, 404, { error: "Deployment not found." });
+
+    // In local AWS mode, also fetch live status from AgentCore if we have a runtimeId
+    if (isLocalAwsMode() && deployment.runtimeId && deployment.deploymentStatus !== "failed") {
+      try {
+        const runtimeStatus = await getAgentRuntime(deployment.runtimeId);
+        deployment.liveRuntimeStatus = runtimeStatus.status || runtimeStatus.agentRuntimeStatus;
+        if (deployment.agentRuntimeEndpointId) {
+          const epStatus = await getRuntimeEndpoint(deployment.runtimeId, deployment.agentRuntimeEndpointId);
+          deployment.liveEndpointStatus = epStatus.status || epStatus.endpointStatus;
+        }
+      } catch (err) {
+        deployment.liveStatusError = err.message;
+      }
+    }
+    return sendJson(res, 200, { deployment });
   }
 
   // GET /api/deployments/:deploymentId
@@ -1433,15 +1985,45 @@ async function handleApi(req, res, requestUrl) {
     const body = await readBody(req);
     const inputPayload = body.inputs || body.input || body.payload || {};
     const invokedBy = body.invokedBy || "current-user@example.com";
-
-    // Simulate AgentCore runtime invocation via stored ARN
     const runId = `run-${agent.id}-${Date.now()}`;
-    const fakeOutput = {
-      result: `[Simulated AgentCore response] Crew processed input: ${JSON.stringify(inputPayload).slice(0, 120)}`,
-      crewOutput: "Task completed successfully by the crew.",
-      agentUsed: agent.name,
-      runtimeArn: deployment.runtimeArn,
-    };
+    const startedAt = now();
+
+    let output, invokeStatus, durationMs;
+
+    if (isLocalAwsMode() && deployment.runtimeId && deployment.agentRuntimeEndpointId) {
+      // ── REAL invocation via AgentCore ──────────────────────────────────────
+      const t0 = Date.now();
+      try {
+        const result = await invokeAgentRuntime(
+          deployment.runtimeId,
+          deployment.agentRuntimeEndpointId,
+          inputPayload
+        );
+        durationMs = Date.now() - t0;
+        output = {
+          result: result.output,
+          rawOutput: result.rawOutput,
+          sessionId: result.sessionId,
+          runtimeArn: deployment.runtimeArn,
+          localAwsMode: true,
+        };
+        invokeStatus = "Success";
+      } catch (err) {
+        durationMs = Date.now() - t0;
+        output = { error: err.message, runtimeArn: deployment.runtimeArn, localAwsMode: true };
+        invokeStatus = "Failed";
+      }
+    } else {
+      // ── MOCK invocation ────────────────────────────────────────────────────
+      durationMs = Math.floor(Math.random() * 8000) + 2000;
+      output = {
+        result: `[Simulated AgentCore response] Agent processed: ${JSON.stringify(inputPayload).slice(0, 120)}`,
+        agentUsed: agent.name,
+        runtimeArn: deployment.runtimeArn,
+        localAwsMode: false,
+      };
+      invokeStatus = "Success";
+    }
 
     const invocationRecord = {
       id: runId,
@@ -1451,22 +2033,21 @@ async function handleApi(req, res, requestUrl) {
       runtimeArn: deployment.runtimeArn,
       invokedBy,
       inputs: inputPayload,
-      output: fakeOutput,
-      status: "Success",
-      durationMs: Math.floor(Math.random() * 8000) + 2000,
-      inputTokens: Math.floor(Math.random() * 4000) + 800,
-      outputTokens: Math.floor(Math.random() * 1200) + 200,
+      output,
+      status: invokeStatus,
+      durationMs,
       model: agent.model || "anthropic.claude-3-5-sonnet-20241022-v2:0",
-      startedAt: now(),
+      localAwsMode: isLocalAwsMode(),
+      startedAt,
       completedAt: now(),
     };
 
     registry.invocations = registry.invocations || [];
     registry.invocations.unshift(invocationRecord);
-    addAudit(registry, "crewai.agent.invoked", { runId, agentId: agent.id, runtimeArn: deployment.runtimeArn, invokedBy });
+    addAudit(registry, "agent.invoked", { runId, agentId: agent.id, runtimeArn: deployment.runtimeArn, invokedBy, localAwsMode: isLocalAwsMode() });
     writeRegistry(registry);
 
-    return sendJson(res, 200, { runId, output: fakeOutput, invocation: invocationRecord, runtimeArn: deployment.runtimeArn });
+    return sendJson(res, 200, { runId, output, invocation: invocationRecord, runtimeArn: deployment.runtimeArn });
   }
 
   // GET /api/agents/:agentId/invocations — list invocation history
@@ -1474,6 +2055,413 @@ async function handleApi(req, res, requestUrl) {
     const registry = readRegistry();
     const invocations = (registry.invocations || []).filter((i) => i.agentId === parts[2]);
     return sendJson(res, 200, { invocations });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // PHASE 1 — AWS Account Connections & Inventory Discovery
+  // ══════════════════════════════════════════════════════════════════════════════
+
+  // GET /api/organizations/:orgId/account-connections
+  if (req.method === "GET" && parts[1] === "organizations" && parts[3] === "account-connections" && !parts[4]) {
+    const registry = readRegistry();
+    const connections = (registry.awsAccountConnections || []).filter((c) => c.organizationId === parts[2]);
+    return sendJson(res, 200, { connections });
+  }
+
+  // POST /api/organizations/:orgId/account-connections — add a new BU account
+  if (req.method === "POST" && parts[1] === "organizations" && parts[3] === "account-connections" && !parts[4]) {
+    const registry = readRegistry();
+    const org = (registry.organizations || []).find((o) => o.id === parts[2]);
+    if (!org) return sendJson(res, 404, { error: "Organization not found." });
+    const body = await readBody(req);
+    if (!body.awsAccountId) return sendJson(res, 400, { error: "awsAccountId is required." });
+    if (!body.discoveryRoleArn) return sendJson(res, 400, { error: "discoveryRoleArn is required." });
+    if (!body.provisioningRoleArn) return sendJson(res, 400, { error: "provisioningRoleArn is required." });
+    if (/AKIA|BEGIN|password|token[-_]?value/i.test(body.externalIdRef || "")) {
+      return sendJson(res, 400, { error: "externalIdRef must be a secret reference name, never a raw secret value." });
+    }
+    const connId = `conn-${slug(org.id)}-${Date.now()}`;
+    const connection = {
+      id: connId,
+      organizationId: parts[2],
+      awsAccountId: body.awsAccountId.trim(),
+      accountName: (body.accountName || "").trim(),
+      environment: body.environment || "production",
+      discoveryRoleArn: body.discoveryRoleArn.trim(),
+      provisioningRoleArn: body.provisioningRoleArn.trim(),
+      externalIdRef: body.externalIdRef || null,
+      enabledRegions: body.enabledRegions || ["us-east-1"],
+      agentCoreGatewayArn: body.agentCoreGatewayArn || null,
+      agentCoreGatewayUrl: body.agentCoreGatewayUrl || null,
+      status: "PENDING_SYNC",
+      lastSuccessfulSyncAt: null,
+      createdBy: body.createdBy || "platform-admin@example.com",
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    registry.awsAccountConnections.push(connection);
+    addAudit(registry, "aws.account.connected", { connId, awsAccountId: connection.awsAccountId, orgId: parts[2], createdBy: connection.createdBy });
+    writeRegistry(registry);
+    return sendJson(res, 201, { connection });
+  }
+
+  // GET /api/organizations/:orgId/account-connections/:connId
+  if (req.method === "GET" && parts[1] === "organizations" && parts[3] === "account-connections" && parts[4] && !parts[5]) {
+    const registry = readRegistry();
+    const connection = (registry.awsAccountConnections || []).find((c) => c.id === parts[4] && c.organizationId === parts[2]);
+    if (!connection) return sendJson(res, 404, { error: "Account connection not found." });
+    return sendJson(res, 200, { connection });
+  }
+
+  // PUT /api/organizations/:orgId/account-connections/:connId — update connection settings
+  if (req.method === "PUT" && parts[1] === "organizations" && parts[3] === "account-connections" && parts[4] && !parts[5]) {
+    const registry = readRegistry();
+    const connection = (registry.awsAccountConnections || []).find((c) => c.id === parts[4] && c.organizationId === parts[2]);
+    if (!connection) return sendJson(res, 404, { error: "Account connection not found." });
+    const body = await readBody(req);
+    if (body.accountName !== undefined) connection.accountName = body.accountName;
+    if (body.environment !== undefined) connection.environment = body.environment;
+    if (body.discoveryRoleArn !== undefined) connection.discoveryRoleArn = body.discoveryRoleArn;
+    if (body.provisioningRoleArn !== undefined) connection.provisioningRoleArn = body.provisioningRoleArn;
+    if (body.enabledRegions !== undefined) connection.enabledRegions = body.enabledRegions;
+    if (body.agentCoreGatewayArn !== undefined) connection.agentCoreGatewayArn = body.agentCoreGatewayArn;
+    if (body.agentCoreGatewayUrl !== undefined) connection.agentCoreGatewayUrl = body.agentCoreGatewayUrl;
+    connection.updatedAt = now();
+    addAudit(registry, "aws.account.updated", { connId: connection.id, orgId: parts[2] });
+    writeRegistry(registry);
+    return sendJson(res, 200, { connection });
+  }
+
+  // POST /api/organizations/:orgId/account-connections/:connId/sync — trigger inventory scan
+  if (req.method === "POST" && parts[1] === "organizations" && parts[3] === "account-connections" && parts[4] && parts[5] === "sync") {
+    const registry = readRegistry();
+    const connection = (registry.awsAccountConnections || []).find((c) => c.id === parts[4] && c.organizationId === parts[2]);
+    if (!connection) return sendJson(res, 404, { error: "Account connection not found." });
+
+    addAudit(registry, "aws.inventory.sync.started", { connId: connection.id, orgId: parts[2] });
+    const { syncRun, resources } = await runInventorySync(connection, parts[2]);
+
+    // Merge discovered resources — update existing by ARN, add new ones
+    registry.discoveredResources = registry.discoveredResources || [];
+    for (const res2 of resources) {
+      const existing = registry.discoveredResources.find((r) => r.resourceArn === res2.resourceArn && r.organizationId === parts[2]);
+      if (existing) {
+        const changed = existing.checksum !== res2.checksum;
+        existing.checksum = res2.checksum;
+        existing.metadataJson = res2.metadataJson;
+        existing.lastSeenAt = res2.lastSeenAt;
+        existing.updatedAt = res2.updatedAt;
+        existing.discoveryStatus = changed ? "CHANGED" : "ACTIVE";
+        syncRun.resourcesUpdated = (syncRun.resourcesUpdated || 0) + (changed ? 1 : 0);
+      } else {
+        registry.discoveredResources.push(res2);
+      }
+    }
+
+    // Mark resources no longer seen as STALE
+    const seenArns = new Set(resources.map((r) => r.resourceArn));
+    for (const dr of registry.discoveredResources.filter((r) => r.awsAccountConnectionId === connection.id)) {
+      if (!seenArns.has(dr.resourceArn)) {
+        dr.discoveryStatus = "STALE";
+        syncRun.resourcesRemoved = (syncRun.resourcesRemoved || 0) + 1;
+      }
+    }
+
+    connection.status = "CONNECTED";
+    connection.lastSuccessfulSyncAt = syncRun.completedAt;
+    connection.updatedAt = now();
+    registry.inventorySyncRuns = registry.inventorySyncRuns || [];
+    registry.inventorySyncRuns.unshift(syncRun);
+    addAudit(registry, "aws.inventory.sync.completed", { connId: connection.id, orgId: parts[2], runId: syncRun.id, resourcesDiscovered: syncRun.resourcesDiscovered });
+    writeRegistry(registry);
+    return sendJson(res, 200, { syncRun, resourcesDiscovered: syncRun.resourcesDiscovered });
+  }
+
+  // GET /api/organizations/:orgId/account-connections/:connId/sync-runs
+  if (req.method === "GET" && parts[1] === "organizations" && parts[3] === "account-connections" && parts[4] && parts[5] === "sync-runs") {
+    const registry = readRegistry();
+    const runs = (registry.inventorySyncRuns || []).filter((r) => r.awsAccountConnectionId === parts[4] && r.organizationId === parts[2]);
+    return sendJson(res, 200, { syncRuns: runs });
+  }
+
+  // GET /api/organizations/:orgId/discovered-resources
+  if (req.method === "GET" && parts[1] === "organizations" && parts[3] === "discovered-resources" && !parts[4]) {
+    const registry = readRegistry();
+    let resources = (registry.discoveredResources || []).filter((r) => r.organizationId === parts[2]);
+    const { type, region, status: dStatus } = Object.fromEntries(requestUrl.searchParams);
+    if (type) resources = resources.filter((r) => r.resourceType === type);
+    if (region) resources = resources.filter((r) => r.region === region);
+    if (dStatus) resources = resources.filter((r) => r.discoveryStatus === dStatus);
+    return sendJson(res, 200, { resources });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // PHASE 2 — Project Visible Resources
+  // ══════════════════════════════════════════════════════════════════════════════
+
+  // GET /api/projects/:pid/visible-resources
+  if (req.method === "GET" && parts[1] === "projects" && parts[3] === "visible-resources" && !parts[4]) {
+    const registry = readRegistry();
+    const visible = (registry.projectVisibleResources || []).filter((v) => v.projectId === parts[2] && v.visibilityStatus === "VISIBLE");
+    // Enrich each record with the full discovered resource
+    const enriched = visible.map((v) => {
+      const dr = (registry.discoveredResources || []).find((r) => r.id === v.discoveredResourceId);
+      return { ...v, discoveredResource: dr || null };
+    });
+    return sendJson(res, 200, { visibleResources: enriched });
+  }
+
+  // POST /api/projects/:pid/visible-resources — add a resource to project visibility
+  if (req.method === "POST" && parts[1] === "projects" && parts[3] === "visible-resources" && !parts[4]) {
+    const registry = readRegistry();
+    const body = await readBody(req);
+    if (!body.discoveredResourceId) return sendJson(res, 400, { error: "discoveredResourceId is required." });
+    const dr = (registry.discoveredResources || []).find((r) => r.id === body.discoveredResourceId);
+    if (!dr) return sendJson(res, 404, { error: "Discovered resource not found." });
+    // Check org membership (resource must belong to org that owns this project)
+    const org = (registry.organizations || []).find((o) => o.projects?.some((p) => p.id === parts[2]));
+    if (!org || dr.organizationId !== org.id) return sendJson(res, 422, { error: "Resource does not belong to the same organization as this project." });
+    // Idempotent — update if exists
+    const existing = (registry.projectVisibleResources || []).find((v) => v.projectId === parts[2] && v.discoveredResourceId === body.discoveredResourceId);
+    if (existing) {
+      existing.visibilityStatus = body.visibilityStatus || "VISIBLE";
+      existing.addedAt = now();
+      writeRegistry(registry);
+      return sendJson(res, 200, { visibleResource: existing });
+    }
+    const record = makeVisible(dr, parts[2], org.id, body.addedBy || "current-user@example.com");
+    record.visibilityStatus = body.visibilityStatus || "VISIBLE";
+    registry.projectVisibleResources = registry.projectVisibleResources || [];
+    registry.projectVisibleResources.push(record);
+    addAudit(registry, "project.resource.visibility.added", { projectId: parts[2], resourceId: body.discoveredResourceId, resourceType: dr.resourceType });
+    writeRegistry(registry);
+    return sendJson(res, 201, { visibleResource: record });
+  }
+
+  // PATCH /api/projects/:pid/visible-resources/:pvrid — hide/show
+  if (req.method === "PATCH" && parts[1] === "projects" && parts[3] === "visible-resources" && parts[4]) {
+    const registry = readRegistry();
+    const record = (registry.projectVisibleResources || []).find((v) => v.id === parts[4] && v.projectId === parts[2]);
+    if (!record) return sendJson(res, 404, { error: "Visible resource record not found." });
+    const body = await readBody(req);
+    if (body.visibilityStatus) record.visibilityStatus = body.visibilityStatus;
+    addAudit(registry, "project.resource.visibility.changed", { projectId: parts[2], recordId: parts[4], visibilityStatus: record.visibilityStatus });
+    writeRegistry(registry);
+    return sendJson(res, 200, { visibleResource: record });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // PHASE 3 — Tool Registration Requests
+  // ══════════════════════════════════════════════════════════════════════════════
+
+  // GET /api/projects/:pid/tool-registration-requests
+  if (req.method === "GET" && parts[1] === "projects" && parts[3] === "tool-registration-requests" && !parts[4]) {
+    const registry = readRegistry();
+    const { approvalStatus } = Object.fromEntries(requestUrl.searchParams);
+    let trrs = (registry.toolRegistrationRequests || []).filter((r) => r.projectId === parts[2]);
+    if (approvalStatus) trrs = trrs.filter((r) => r.approvalStatus === approvalStatus);
+    return sendJson(res, 200, { toolRegistrationRequests: trrs });
+  }
+
+  // POST /api/projects/:pid/tool-registration-requests — submit new tool registration
+  if (req.method === "POST" && parts[1] === "projects" && parts[3] === "tool-registration-requests" && !parts[4]) {
+    const registry = readRegistry();
+    const body = await readBody(req);
+    // Validations
+    if (!body.requestedToolName || body.requestedToolName.trim().length < 2) return sendJson(res, 400, { error: "requestedToolName must be at least 2 characters." });
+    if (!body.sourceDiscoveredResourceId) return sendJson(res, 400, { error: "sourceDiscoveredResourceId is required." });
+    if (!body.sideEffectLevel || !["READ_ONLY","WRITE","DESTRUCTIVE"].includes(body.sideEffectLevel)) return sendJson(res, 400, { error: "sideEffectLevel must be READ_ONLY, WRITE, or DESTRUCTIVE." });
+    if (!body.businessOwner) return sendJson(res, 400, { error: "businessOwner is required." });
+    if (!body.toolType || !["API_GATEWAY","LAMBDA","BEDROCK_KB","EXISTING_GATEWAY_TOOL"].includes(body.toolType)) return sendJson(res, 400, { error: "toolType must be API_GATEWAY, LAMBDA, BEDROCK_KB, or EXISTING_GATEWAY_TOOL." });
+    // Source must be in project visibility
+    const pvr = (registry.projectVisibleResources || []).find((v) => v.discoveredResourceId === body.sourceDiscoveredResourceId && v.projectId === parts[2] && v.visibilityStatus === "VISIBLE");
+    if (!pvr) return sendJson(res, 422, { error: "Source resource is not visible to this project. Add it to Project Resource Visibility first." });
+    // Source resource must be ACTIVE
+    const dr = (registry.discoveredResources || []).find((r) => r.id === body.sourceDiscoveredResourceId);
+    if (!dr) return sendJson(res, 404, { error: "Discovered resource not found." });
+    if (dr.discoveryStatus === "REMOVED") return sendJson(res, 422, { error: "Source resource has been removed from the AWS account. Cannot register a tool from a removed resource." });
+    if (dr.discoveryStatus === "STALE") return sendJson(res, 422, { error: "Source resource is stale (not seen in last sync). Run an inventory sync before registering." });
+    // No raw secrets in auth
+    if (/AKIA|BEGIN|password|token[-_]?value/i.test(body.authConfigRef || "")) return sendJson(res, 400, { error: "authConfigRef must be a secret reference name, never a raw secret value." });
+    // Validate JSON schemas if provided
+    if (body.inputSchemaJson) {
+      try { JSON.parse(body.inputSchemaJson); } catch { return sendJson(res, 400, { error: "inputSchemaJson is not valid JSON." }); }
+    }
+    const org = (registry.organizations || []).find((o) => o.projects?.some((p) => p.id === parts[2]));
+    const trrId = `trr-${slug(body.requestedToolName)}-${Date.now()}`;
+    const trr = {
+      id: trrId,
+      organizationId: org?.id || "",
+      projectId: parts[2],
+      sourceDiscoveredResourceId: body.sourceDiscoveredResourceId,
+      sourceResourceArn: dr.resourceArn,
+      sourceResourceType: dr.resourceType,
+      requestedToolName: body.requestedToolName.trim(),
+      requestedDescription: (body.requestedDescription || "").trim(),
+      toolType: body.toolType,
+      inputSchemaJson: body.inputSchemaJson || null,
+      outputSchemaJson: body.outputSchemaJson || null,
+      sampleRequestJson: body.sampleRequestJson || null,
+      sampleResponseJson: body.sampleResponseJson || null,
+      authConfigRef: body.authConfigRef || null,
+      dataClassification: body.dataClassification || "internal",
+      sideEffectLevel: body.sideEffectLevel,
+      rateLimitRpm: body.rateLimitRpm || null,
+      timeoutSeconds: body.timeoutSeconds || 30,
+      businessOwner: body.businessOwner.trim(),
+      allowedUseCases: body.allowedUseCases || [],
+      tags: body.tags || {},
+      approvalStatus: "PENDING_APPROVAL",
+      validationStatus: "passed",
+      validationResultsJson: JSON.stringify([
+        { check: "source_resource_exists", status: "pass", message: "Source resource found in organization catalog." },
+        { check: "project_visibility", status: "pass", message: "Resource is visible to this project." },
+        { check: "no_raw_secrets", status: "pass", message: "No raw credential values detected." },
+        { check: "side_effect_declared", status: "pass", message: `Side effect level declared: ${body.sideEffectLevel}.` },
+        { check: "business_owner", status: "pass", message: `Business owner set: ${body.businessOwner}.` },
+        ...(body.sideEffectLevel !== "READ_ONLY" ? [{ check: "write_risk", status: "warn", message: `${body.sideEffectLevel} operation requires elevated approval (security review).` }] : []),
+      ]),
+      requestedBy: body.requestedBy || "current-user@example.com",
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    registry.toolRegistrationRequests = registry.toolRegistrationRequests || [];
+    registry.toolRegistrationRequests.push(trr);
+    // Create approval tasks
+    const approverTypes = ["business_owner", "project_owner", "platform_admin"];
+    if (body.sideEffectLevel === "WRITE" || body.sideEffectLevel === "DESTRUCTIVE") approverTypes.push("security");
+    const trrTasks = [...new Set(approverTypes)].map((type) => ({
+      id: `approval-trr-${trrId}-${type}-${Date.now()}`,
+      taskCategory: "tool_registration",
+      toolRegistrationRequestId: trrId,
+      projectId: parts[2],
+      organizationId: trr.organizationId,
+      resourceName: trr.requestedToolName,
+      sourceResourceType: dr.resourceType,
+      sideEffectLevel: trr.sideEffectLevel,
+      approverType: type,
+      status: "pending",
+      riskTier: body.sideEffectLevel === "DESTRUCTIVE" ? "critical" : body.sideEffectLevel === "WRITE" ? "high" : "medium",
+      reason: reasonFor(type),
+      createdAt: now(),
+      decidedAt: null,
+      decision: null,
+      comments: "",
+      approver: null,
+    }));
+    registry.approvalTasks.push(...trrTasks);
+    addAudit(registry, "tool.registration.requested", { trrId, projectId: parts[2], toolName: trr.requestedToolName, sideEffectLevel: trr.sideEffectLevel });
+    writeRegistry(registry);
+    return sendJson(res, 201, { toolRegistrationRequest: trr, approvalTasks: trrTasks });
+  }
+
+  // GET /api/tool-registration-requests/:trrId
+  if (req.method === "GET" && parts[1] === "tool-registration-requests" && parts[2] && !parts[3]) {
+    const registry = readRegistry();
+    const trr = (registry.toolRegistrationRequests || []).find((r) => r.id === parts[2]);
+    if (!trr) return sendJson(res, 404, { error: "Tool registration request not found." });
+    const tasks = registry.approvalTasks.filter((t) => t.toolRegistrationRequestId === parts[2]);
+    return sendJson(res, 200, { toolRegistrationRequest: trr, approvalTasks: tasks });
+  }
+
+  // POST /api/tool-registration-requests/:trrId/provision — trigger Gateway provisioning after approval
+  if (req.method === "POST" && parts[1] === "tool-registration-requests" && parts[2] && parts[3] === "provision") {
+    const registry = readRegistry();
+    const trr = (registry.toolRegistrationRequests || []).find((r) => r.id === parts[2]);
+    if (!trr) return sendJson(res, 404, { error: "Tool registration request not found." });
+    if (trr.approvalStatus !== "APPROVED") return sendJson(res, 422, { error: "Tool registration request must be fully approved before provisioning." });
+    const body = await readBody(req);
+    const conn = (registry.awsAccountConnections || []).find((c) => c.organizationId === trr.organizationId);
+    if (!conn) return sendJson(res, 422, { error: "No AWS account connection found for this organization." });
+    // Simulate provisioning
+    const gtdId = `gtd-${trr.id}-${Date.now()}`;
+    const targetId = `tgt-${slug(trr.requestedToolName)}-${Date.now()}`;
+    const gatewayArn = conn.agentCoreGatewayArn || `arn:aws:bedrock-agentcore:us-east-1:${conn.awsAccountId}:gateway/gw-auto`;
+    const gtd = {
+      id: gtdId,
+      organizationId: trr.organizationId,
+      projectId: trr.projectId,
+      toolRegistrationRequestId: trr.id,
+      awsAccountConnectionId: conn.id,
+      gatewayArn,
+      gatewayId: gatewayArn.split("/").pop(),
+      targetId,
+      targetType: trr.toolType,
+      deploymentStatus: "SUCCEEDED",
+      deploymentLogsJson: JSON.stringify([
+        `[${now()}] Assuming provisioning role ${conn.provisioningRoleArn}…`,
+        `[${now()}] STS AssumeRole succeeded. Session: guardian-provision-${trr.projectId}`,
+        `[${now()}] Creating AgentCore Gateway target for ${trr.requestedToolName} (type: ${trr.toolType})…`,
+        `[${now()}] Gateway target created: ${targetId}`,
+        `[${now()}] Calling MCP tools/list to confirm tool registration…`,
+        `[${now()}] MCP tools/list confirmed: tool name = "${trr.requestedToolName}", schema validated.`,
+        `[${now()}] ProjectTool record created. Provisioning complete.`,
+      ]),
+      createdAt: now(),
+      completedAt: now(),
+    };
+    registry.gatewayTargetDeployments = registry.gatewayTargetDeployments || [];
+    registry.gatewayTargetDeployments.push(gtd);
+    // Create ProjectTool
+    const ptId = `ptool-${slug(trr.requestedToolName)}-${Date.now()}`;
+    const projectTool = {
+      id: ptId,
+      organizationId: trr.organizationId,
+      projectId: trr.projectId,
+      toolRegistrationRequestId: trr.id,
+      sourceDiscoveredResourceId: trr.sourceDiscoveredResourceId,
+      gatewayArn,
+      gatewayUrl: conn.agentCoreGatewayUrl || "",
+      gatewayTargetId: targetId,
+      mcpToolName: trr.requestedToolName,
+      displayName: trr.requestedToolName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      description: trr.requestedDescription,
+      inputSchemaJson: trr.inputSchemaJson,
+      outputSchemaJson: trr.outputSchemaJson,
+      sideEffectLevel: trr.sideEffectLevel,
+      dataClassification: trr.dataClassification,
+      riskTier: gtd.targetType === "BEDROCK_KB" ? "low" : trr.sideEffectLevel === "READ_ONLY" ? "medium" : "high",
+      businessOwner: trr.businessOwner,
+      toolStatus: "ACTIVE",
+      version: "1.0.0",
+      checksum: `sha256:${Buffer.from(`${trr.id}:${now()}`).toString("hex").slice(0, 32)}`,
+      lastValidatedAt: now(),
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    registry.projectTools = registry.projectTools || [];
+    registry.projectTools.push(projectTool);
+    trr.approvalStatus = "PROVISIONED";
+    trr.updatedAt = now();
+    addAudit(registry, "tool.gateway.provisioned", { trrId: trr.id, projectId: trr.projectId, targetId, mcpToolName: trr.requestedToolName });
+    writeRegistry(registry);
+    return sendJson(res, 200, { gatewayTargetDeployment: gtd, projectTool });
+  }
+
+  // GET /api/tool-registration-requests/:trrId/provisioning-status
+  if (req.method === "GET" && parts[1] === "tool-registration-requests" && parts[2] && parts[3] === "provisioning-status") {
+    const registry = readRegistry();
+    const gtd = (registry.gatewayTargetDeployments || []).find((g) => g.toolRegistrationRequestId === parts[2]);
+    return sendJson(res, 200, { gatewayTargetDeployment: gtd || null });
+  }
+
+  // ── Project Tools (approved, gateway-backed) ────────────────────────────────
+
+  // GET /api/projects/:pid/project-tools
+  if (req.method === "GET" && parts[1] === "projects" && parts[3] === "project-tools" && !parts[4]) {
+    const registry = readRegistry();
+    const { status: toolStatus } = Object.fromEntries(requestUrl.searchParams);
+    let tools2 = (registry.projectTools || []).filter((t) => t.projectId === parts[2]);
+    if (toolStatus) tools2 = tools2.filter((t) => t.toolStatus === toolStatus);
+    return sendJson(res, 200, { projectTools: tools2 });
+  }
+
+  // GET /api/project-tools/:toolId
+  if (req.method === "GET" && parts[1] === "project-tools" && parts[2] && !parts[3]) {
+    const registry = readRegistry();
+    const tool = (registry.projectTools || []).find((t) => t.id === parts[2]);
+    if (!tool) return sendJson(res, 404, { error: "Project tool not found." });
+    return sendJson(res, 200, { projectTool: tool });
   }
 
   return sendJson(res, 404, { error: "API route not found." });
@@ -1499,7 +2487,51 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(port, host, () => {
+server.listen(port, host, async () => {
+  // 1. Resolve real AWS credentials if LOCAL_AWS_MODE=true
+  await resolveLocalAwsContext();
+
+  // 2. If local mode resolved, fetch Bedrock models and patch local org's awsConfig
+  if (isLocalAwsMode()) {
+    const ctx = getLocalAwsContext();
+    try {
+      const modelIds = await listAvailableModelIds();
+      // Patch the registry's local-dev org with real account info + model list
+      const registry = readRegistry();
+      const localOrg = (registry.organizations || []).find((o) => o.id === "local-dev");
+      if (localOrg && localOrg.awsConfig) {
+        localOrg.awsConfig.modelAccount.accountId = ctx.accountId;
+        localOrg.awsConfig.modelAccount.region = ctx.region;
+        localOrg.awsConfig.executionAccount.accountId = ctx.accountId;
+        localOrg.awsConfig.executionAccount.region = ctx.region;
+        localOrg.awsConfig.executionAccount.agentCoreExecutionRoleArn =
+          `arn:aws:iam::${ctx.accountId}:role/AgentCoreExecutionRole`;
+        localOrg.awsConfig.executionAccount.ecrRepositoryPrefix =
+          `${ctx.accountId}.dkr.ecr.${ctx.region}.amazonaws.com/pegasus`;
+        localOrg.awsConfig.executionAccount.s3ArtifactBucket =
+          `pegasus-agent-artifacts-${ctx.accountId}`;
+        if (modelIds.length > 0) {
+          localOrg.awsConfig.modelAccount.allowedModelIds = modelIds;
+          console.log(`[server] Patched local-dev org with ${modelIds.length} Bedrock models.`);
+        } else {
+          console.warn("[server] No Bedrock models returned — check IAM permissions (bedrock:ListFoundationModels).");
+        }
+        writeRegistry(registry);
+      }
+    } catch (err) {
+      console.error(`[server] Could not patch local org from Bedrock: ${err.message}`);
+    }
+  }
+
+  // 3. Ensure registry is seeded
   ensureRegistry();
-  console.log(`${platformName} UI and Control Plane API running at http://${host}:${port}`);
+
+  console.log(`\n${platformName} UI and Control Plane API running at http://${host}:${port}`);
+  if (isLocalAwsMode()) {
+    const ctx = getLocalAwsContext();
+    console.log(`Local AWS mode  : ACTIVE  (account ${ctx.accountId}, ${ctx.region})`);
+    console.log(`Caller ARN      : ${ctx.callerArn}`);
+  } else {
+    console.log(`Local AWS mode  : OFF  (all AWS calls are mocked)`);
+  }
 });

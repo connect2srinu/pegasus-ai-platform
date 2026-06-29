@@ -246,3 +246,60 @@ observability:
 
 // Projects that explicitly exclude CrewAI agents (mirrors server-side projectCatalog)
 export const CREWAI_EXCLUDED_PROJECTS = ["member-services", "Member Services"];
+
+// ── AWS Discovery & Tool Registration constants ──────────────────────────────
+
+export const DISCOVERED_RESOURCE_TYPES = {
+  API_GATEWAY_REST:       { label: "API Gateway REST",       icon: "Globe",    color: "blue"   },
+  API_GATEWAY_HTTP:       { label: "API Gateway HTTP",       icon: "Globe",    color: "blue"   },
+  LAMBDA:                 { label: "Lambda Function",        icon: "Zap",      color: "amber"  },
+  AGENTCORE_GATEWAY:      { label: "AgentCore Gateway",      icon: "Server",   color: "violet" },
+  AGENTCORE_GATEWAY_TARGET:{ label: "Gateway Target",        icon: "Target",   color: "violet" },
+  AGENTCORE_GATEWAY_TOOL: { label: "Gateway Tool (MCP)",     icon: "Wrench",   color: "green"  },
+  BEDROCK_KB:             { label: "Bedrock Knowledge Base", icon: "Database", color: "teal"   },
+  BEDROCK_KB_DATA_SOURCE: { label: "KB Data Source",         icon: "FileText", color: "teal"   },
+};
+
+export const DISCOVERY_STATUS = {
+  ACTIVE:   { label: "Active",   cls: "pass" },
+  CHANGED:  { label: "Changed",  cls: "warn" },
+  STALE:    { label: "Stale",    cls: "warn" },
+  REMOVED:  { label: "Removed",  cls: "fail" },
+  ERROR:    { label: "Error",    cls: "fail" },
+};
+
+export const TOOL_REGISTRATION_TYPES = {
+  API_GATEWAY:          "API Gateway Endpoint",
+  LAMBDA:               "Lambda Function",
+  BEDROCK_KB:           "Bedrock Knowledge Base",
+  EXISTING_GATEWAY_TOOL:"Existing AgentCore Gateway Tool",
+};
+
+export const SIDE_EFFECT_LEVELS = {
+  READ_ONLY:   { label: "Read Only",   cls: "pass",    description: "No data modification. Safe for broad agent use." },
+  WRITE:       { label: "Write",       cls: "warn",    description: "Modifies data. Requires explicit approval and audit." },
+  DESTRUCTIVE: { label: "Destructive", cls: "fail",    description: "Deletes or irreversibly modifies data. High scrutiny required." },
+};
+
+export const PROJECT_TOOL_STATUS = {
+  ACTIVE:          { label: "Active",           cls: "pass" },
+  DISABLED:        { label: "Disabled",         cls: "fail" },
+  STALE:           { label: "Stale",            cls: "warn" },
+  REVIEW_REQUIRED: { label: "Review Required",  cls: "warn" },
+  REMOVED:         { label: "Removed",          cls: "fail" },
+};
+
+export const AWS_REGIONS = [
+  "us-east-1", "us-east-2", "us-west-1", "us-west-2",
+  "eu-west-1", "eu-west-2", "eu-central-1",
+  "ap-southeast-1", "ap-southeast-2", "ap-northeast-1",
+];
+
+export const TOOL_REGISTRATION_APPROVAL_STATUS = {
+  DRAFT:             "Draft",
+  PENDING_APPROVAL:  "Pending Approval",
+  APPROVED:          "Approved",
+  REJECTED:          "Rejected",
+  PROVISIONED:       "Provisioned",
+  CANCELLED:         "Cancelled",
+};
