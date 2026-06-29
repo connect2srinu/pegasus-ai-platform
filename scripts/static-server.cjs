@@ -3303,6 +3303,54 @@ async function handleApi(req, res, requestUrl) {
     });
   }
 
+  // POST /api/organizations/:orgId/logical-tools/:ltdId/grants — grant tool to a project for an env
+  if (req.method === "POST" && parts[1] === "organizations" && parts[2] && parts[3] === "logical-tools" && parts[4] && parts[5] === "grants") {
+    const registry = readRegistry();
+    const { orgId, ltdId } = { orgId: parts[2], ltdId: parts[4] };
+    const body = await readBody(req);
+    const { projectId, environmentId, grantedBy } = body;
+
+    if (!projectId || !environmentId) return sendJson(res, 400, { error: "projectId and environmentId are required." });
+
+    const ltd = (registry.logicalToolDefinitions || []).find((l) => l.id === ltdId && l.organizationId === orgId);
+    if (!ltd) return sendJson(res, 404, { error: "LogicalToolDefinition not found." });
+    if (ltd.approvalStatus !== "APPROVED") return sendJson(res, 409, { error: "Tool must be APPROVED before granting to projects." });
+
+    // Verify an active ETD exists for this env
+    const etd = (registry.environmentToolDeployments || []).find(
+      (e) => e.logicalToolDefinitionId === ltdId && e.environmentId === environmentId && e.deploymentStatus === "ACTIVE"
+    );
+    if (!etd) return sendJson(res, 409, { error: "Tool is not actively deployed in that environment. Deploy it first." });
+
+    // Verify project belongs to org
+    const allProjects = Object.values(registry.projects || {});
+    const project = allProjects.find((p) => p.id === projectId && p.organizationId === orgId);
+    if (!project) return sendJson(res, 404, { error: "Project not found in this organization." });
+
+    // Check duplicate
+    const existing = (registry.projectToolGrants || []).find(
+      (g) => g.logicalToolDefinitionId === ltdId && g.projectId === projectId && g.environmentId === environmentId && g.grantStatus === "ACTIVE"
+    );
+    if (existing) return sendJson(res, 409, { error: "This tool is already granted to that project for that environment." });
+
+    const grant = {
+      id: `ptg-${ltdId}-${projectId}-${environmentId}-${Date.now()}`,
+      organizationId: orgId,
+      projectId,
+      logicalToolDefinitionId: ltdId,
+      environmentId,
+      grantedBy: grantedBy || "system",
+      grantStatus: "ACTIVE",
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    registry.projectToolGrants = registry.projectToolGrants || [];
+    registry.projectToolGrants.push(grant);
+    addAudit(registry, "tool.grant.created", { grantId: grant.id, ltdId, projectId, environmentId });
+    writeRegistry(registry);
+    return sendJson(res, 201, { projectToolGrant: grant });
+  }
+
   return sendJson(res, 404, { error: "API route not found." });
 }
 

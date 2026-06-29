@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Wrench, Plus, ChevronRight, ChevronDown, CheckCircle2, AlertTriangle,
   Clock, XCircle, RefreshCw, ArrowRight, Package, AlertCircle, X,
+  FolderOpen, ShieldCheck,
 } from "lucide-react";
 import { api } from "../../utils.js";
 
@@ -377,12 +378,239 @@ function EnvDeploymentRow({ envDep, onValidate }) {
   );
 }
 
+// ── Inline approval panel ─────────────────────────────────────────────────────
+
+function InlineApprovalPanel({ ltd, orgId, onApproved }) {
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [comments, setComments] = useState({});
+  const [busy, setBusy] = useState({});
+
+  useEffect(() => {
+    api(`/api/approvals?organizationId=${orgId}&scope=org&status=pending`)
+      .then((r) => {
+        // filter to tasks for this specific tool
+        const relevant = (r.approvalTasks || []).filter(
+          (t) => t._ltd?.id === ltd.id || t._trr?.logicalToolDefinitionId === ltd.id
+        );
+        setTasks(relevant);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [orgId, ltd.id]);
+
+  async function decide(taskId, decision) {
+    setBusy((b) => ({ ...b, [taskId]: true }));
+    try {
+      await api(`/api/approvals/${taskId}/decision`, {
+        method: "POST",
+        body: JSON.stringify({
+          decision,
+          comments: comments[taskId] || "",
+          approver: "platform-admin@example.com",
+        }),
+      });
+      setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: decision === "approved" ? "approved" : "rejected", decision } : t));
+      // If all remaining tasks approved, trigger parent refresh
+      const updated = tasks.map((t) => t.id === taskId ? { ...t, status: decision === "approved" ? "approved" : "rejected" } : t);
+      if (updated.every((t) => t.status === "approved")) {
+        setTimeout(onApproved, 300);
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setBusy((b) => ({ ...b, [taskId]: false }));
+    }
+  }
+
+  if (loading) return <p className="muted" style={{ fontSize: 12 }}>Loading approval tasks…</p>;
+
+  if (tasks.length === 0) {
+    return (
+      <div className="validation-item pass" style={{ marginBottom: 0 }}>
+        <CheckCircle2 size={13} />
+        <span style={{ fontSize: 12 }}>All approval stages complete — tool is now active.</span>
+      </div>
+    );
+  }
+
+  const APPROVER_LABELS = { org_admin: "Org Admin", platform_admin: "Platform Admin", security: "Security" };
+
+  return (
+    <div className="otr-inline-approval">
+      <p className="field-label" style={{ marginBottom: 8 }}>
+        <ShieldCheck size={13} style={{ marginRight: 4, verticalAlign: "middle" }} />
+        Pending approval stages ({tasks.length})
+      </p>
+      {tasks.map((task) => (
+        <div key={task.id} className={`otr-approval-task ${task.status !== "pending" ? "otr-approval-task--done" : ""}`}>
+          <div className="otr-approval-task-header">
+            {task.status === "approved"
+              ? <CheckCircle2 size={13} style={{ color: "var(--green)", flexShrink: 0 }} />
+              : task.status === "rejected"
+              ? <XCircle size={13} style={{ color: "var(--red)", flexShrink: 0 }} />
+              : <Clock size={13} style={{ color: "var(--amber)", flexShrink: 0 }} />}
+            <span style={{ fontSize: 12, fontWeight: 600 }}>
+              {APPROVER_LABELS[task.approverType] || task.approverType}
+            </span>
+            <span className="muted" style={{ fontSize: 11 }}>{task.reason}</span>
+          </div>
+          {task.status === "pending" && (
+            <div className="otr-approval-task-actions">
+              <input
+                className="comment-input"
+                style={{ flex: 1, fontSize: 11 }}
+                placeholder="Comment (optional)"
+                value={comments[task.id] || ""}
+                onChange={(e) => setComments((c) => ({ ...c, [task.id]: e.target.value }))}
+              />
+              <button
+                className="danger"
+                style={{ fontSize: 11, padding: "3px 10px" }}
+                onClick={() => decide(task.id, "rejected")}
+                disabled={busy[task.id]}
+              >
+                Reject
+              </button>
+              <button
+                className="primary"
+                style={{ fontSize: 11, padding: "3px 10px" }}
+                onClick={() => decide(task.id, "approved")}
+                disabled={busy[task.id]}
+              >
+                {busy[task.id] ? "…" : "Approve"}
+              </button>
+            </div>
+          )}
+          {task.status !== "pending" && (
+            <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+              {task.decision} by {task.approver || "reviewer"}
+              {task.comments ? ` · "${task.comments}"` : ""}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Grant to project panel ────────────────────────────────────────────────────
+
+function GrantToProjectPanel({ ltd, orgId, environments, onGranted, onCancel }) {
+  const [projects, setProjects] = useState([]);
+  const [existingGrants, setExistingGrants] = useState([]);
+  const [selectedProject, setSelectedProject] = useState("");
+  const [selectedEnv, setSelectedEnv] = useState(
+    environments.find((e) => !e.isProduction)?.id || environments[0]?.id || ""
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    api(`/api/organizations/${orgId}`)
+      .then((r) => setProjects(r.organization?.projects || []))
+      .catch(() => {});
+    // Load existing grants for this tool to show which projects already have it
+    api(`/api/organizations/${orgId}/logical-tools`)
+      .then((r) => {
+        const thisTool = (r.logicalToolDefinitions || []).find((l) => l.id === ltd.id);
+        // We don't have a dedicated grants endpoint yet, so use activeGrantCount
+      })
+      .catch(() => {});
+  }, [orgId, ltd.id]);
+
+  async function grant() {
+    if (!selectedProject) { setError("Select a project."); return; }
+    if (!selectedEnv) { setError("Select an environment."); return; }
+    setBusy(true); setError(""); setSuccess("");
+    try {
+      await api(`/api/organizations/${orgId}/logical-tools/${ltd.id}/grants`, {
+        method: "POST",
+        body: JSON.stringify({
+          projectId: selectedProject,
+          environmentId: selectedEnv,
+          grantedBy: "platform-admin@example.com",
+        }),
+      });
+      const proj = projects.find((p) => p.id === selectedProject);
+      const env  = environments.find((e) => e.id === selectedEnv);
+      setSuccess(`Granted to ${proj?.name || selectedProject} in ${env?.name || selectedEnv}.`);
+      onGranted?.();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Active env deployments the tool has — only grant for envs where tool is deployed
+  const deployedEnvIds = new Set((ltd.environmentDeployments || [])
+    .filter((e) => e.deploymentStatus === "ACTIVE")
+    .map((e) => e.environmentId));
+  const grantableEnvs = environments.filter((e) => deployedEnvIds.has(e.id));
+
+  return (
+    <div className="otr-grant-panel">
+      <div className="toolbar" style={{ marginBottom: 12 }}>
+        <div>
+          <p className="field-label" style={{ margin: 0 }}>
+            <FolderOpen size={13} style={{ marginRight: 5, verticalAlign: "middle" }} />
+            Grant <code>{ltd.toolKey}</code> to a project
+          </p>
+          <p className="muted" style={{ fontSize: 11, marginTop: 3 }}>
+            Projects can only use this tool in environments where it is deployed and active.
+          </p>
+        </div>
+        <button className="secondary icon-only" onClick={onCancel} style={{ padding: "4px 8px" }}><X size={12} /></button>
+      </div>
+
+      {error && <div className="validation-item fail" style={{ marginBottom: 8 }}><strong>ERROR</strong><span>{error}</span></div>}
+      {success && <div className="validation-item pass" style={{ marginBottom: 8 }}><CheckCircle2 size={13} /><span>{success}</span></div>}
+
+      {grantableEnvs.length === 0 ? (
+        <p className="muted" style={{ fontSize: 12 }}>
+          No active environment deployments. Deploy the tool to at least one environment before granting to projects.
+        </p>
+      ) : (
+        <div className="form-grid" style={{ gap: 10 }}>
+          <label className="field" style={{ marginBottom: 0 }}>
+            Project
+            <select value={selectedProject} onChange={(e) => setSelectedProject(e.target.value)}>
+              <option value="">— select project —</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </label>
+          <label className="field" style={{ marginBottom: 0 }}>
+            Environment
+            <select value={selectedEnv} onChange={(e) => setSelectedEnv(e.target.value)}>
+              {grantableEnvs.map((e) => (
+                <option key={e.id} value={e.id}>{e.name}{e.isProduction ? " (PROD)" : ""}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+
+      {grantableEnvs.length > 0 && (
+        <div className="toolbar" style={{ marginTop: 10, marginBottom: 0 }}>
+          <button className="secondary" onClick={onCancel}>Cancel</button>
+          <button className="primary" onClick={grant} disabled={busy || !!success}>
+            {busy ? "Granting…" : success ? "Granted" : "Grant Access"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Single logical tool card ──────────────────────────────────────────────────
 
 function ToolCard({ ltd, environments, connections, orgId, onRefresh }) {
   const [expanded, setExpanded] = useState(false);
   const [deployingTo, setDeployingTo] = useState(false);
   const [validateResult, setValidateResult] = useState(null);
+  const [showGrantPanel, setShowGrantPanel] = useState(false);
 
   const sideColor = SIDE_EFFECT_COLORS[ltd.sideEffectLevel] || "muted";
   const envDeps = ltd.environmentDeployments || [];
@@ -458,6 +686,17 @@ function ToolCard({ ltd, environments, connections, orgId, onRefresh }) {
             {ltd.activeGrantCount} grant{ltd.activeGrantCount !== 1 ? "s" : ""}
           </span>
 
+          {/* Pending approval call-to-action on the collapsed card */}
+          {ltd.approvalStatus === "PENDING_APPROVAL" && !expanded && (
+            <span
+              className="pill pill--amber"
+              style={{ fontSize: 10, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3 }}
+              onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+            >
+              <ShieldCheck size={11} />Needs approval
+            </span>
+          )}
+
           <button className="icon-btn">
             {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </button>
@@ -475,86 +714,121 @@ function ToolCard({ ltd, environments, connections, orgId, onRefresh }) {
             </div>
           )}
 
-          <div className="otr-detail-grid">
-            {/* Left: info */}
-            <div>
-              <p className="field-label">Tool details</p>
-              <table className="otr-info-table">
-                <tbody>
-                  <tr><td className="muted">Source type</td><td>{ltd.sourceType}</td></tr>
-                  <tr><td className="muted">Version</td><td>{ltd.version}</td></tr>
-                  <tr><td className="muted">Classification</td><td>{ltd.dataClassification}</td></tr>
-                  <tr><td className="muted">Business owner</td><td>{ltd.businessOwner}</td></tr>
-                  <tr><td className="muted">Grants</td><td>{ltd.activeGrantCount} active project grants</td></tr>
-                  {ltd.checksum && <tr><td className="muted">Schema checksum</td><td><code style={{ fontSize: 10 }}>{ltd.checksum}</code></td></tr>}
-                </tbody>
-              </table>
-            </div>
+          {/* ── PENDING APPROVAL: show approval tasks inline ── */}
+          {ltd.approvalStatus === "PENDING_APPROVAL" && (
+            <InlineApprovalPanel
+              ltd={ltd}
+              orgId={orgId}
+              onApproved={() => { setExpanded(false); onRefresh(); }}
+            />
+          )}
 
-            {/* Right: env deployments */}
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <p className="field-label" style={{ margin: 0 }}>Environment deployments</p>
+          {/* ── APPROVED: show full detail + env deployments ── */}
+          {ltd.approvalStatus !== "PENDING_APPROVAL" && (
+            <div className="otr-detail-grid">
+              {/* Left: info */}
+              <div>
+                <p className="field-label">Tool details</p>
+                <table className="otr-info-table">
+                  <tbody>
+                    <tr><td className="muted">Source type</td><td>{ltd.sourceType}</td></tr>
+                    <tr><td className="muted">Version</td><td>{ltd.version}</td></tr>
+                    <tr><td className="muted">Classification</td><td>{ltd.dataClassification}</td></tr>
+                    <tr><td className="muted">Business owner</td><td>{ltd.businessOwner}</td></tr>
+                    <tr><td className="muted">Project grants</td><td>{ltd.activeGrantCount} active</td></tr>
+                    {ltd.checksum && <tr><td className="muted">Schema checksum</td><td><code style={{ fontSize: 10 }}>{ltd.checksum}</code></td></tr>}
+                  </tbody>
+                </table>
+
+                {/* Grant to project button */}
                 {ltd.approvalStatus === "APPROVED" && (
-                  <button
-                    className="secondary"
-                    style={{ fontSize: 11, padding: "2px 8px", marginLeft: "auto" }}
-                    onClick={() => setDeployingTo(true)}
-                  >
-                    <ArrowRight size={11} style={{ marginRight: 3 }} />Deploy to env
-                  </button>
+                  <div style={{ marginTop: 14 }}>
+                    {showGrantPanel ? (
+                      <GrantToProjectPanel
+                        ltd={ltd}
+                        orgId={orgId}
+                        environments={environments}
+                        onGranted={() => { setTimeout(onRefresh, 400); }}
+                        onCancel={() => setShowGrantPanel(false)}
+                      />
+                    ) : (
+                      <button
+                        className="secondary"
+                        style={{ fontSize: 12, width: "100%" }}
+                        onClick={() => setShowGrantPanel(true)}
+                      >
+                        <FolderOpen size={12} style={{ marginRight: 5 }} />Grant to Project
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {deployingTo && (
-                <DeployToEnvForm
-                  orgId={orgId}
-                  ltd={ltd}
-                  environments={environments}
-                  connections={connections}
-                  onSuccess={handleDeploySuccess}
-                  onCancel={() => setDeployingTo(false)}
-                />
-              )}
+              {/* Right: env deployments */}
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <p className="field-label" style={{ margin: 0 }}>Environment deployments</p>
+                  {ltd.approvalStatus === "APPROVED" && (
+                    <button
+                      className="secondary"
+                      style={{ fontSize: 11, padding: "2px 8px", marginLeft: "auto" }}
+                      onClick={() => setDeployingTo(true)}
+                    >
+                      <ArrowRight size={11} style={{ marginRight: 3 }} />Deploy to env
+                    </button>
+                  )}
+                </div>
 
-              {!deployingTo && (
-                <>
-                  {environments.map((env) => {
-                    const dep = envDeps.find((d) => d.environmentId === env.id);
-                    if (!dep) {
+                {deployingTo && (
+                  <DeployToEnvForm
+                    orgId={orgId}
+                    ltd={ltd}
+                    environments={environments}
+                    connections={connections}
+                    onSuccess={handleDeploySuccess}
+                    onCancel={() => setDeployingTo(false)}
+                  />
+                )}
+
+                {!deployingTo && (
+                  <>
+                    {environments.map((env) => {
+                      const dep = envDeps.find((d) => d.environmentId === env.id);
+                      if (!dep) {
+                        return (
+                          <div key={env.id} className="otr-env-row otr-env-row--missing">
+                            <div className="otr-env-row-name">
+                              <span className="otr-env-badge otr-env-badge--missing">{env.name}</span>
+                              {env.isProduction && <span className="pill pill--red" style={{ fontSize: 9, padding: "1px 5px" }}>PROD</span>}
+                            </div>
+                            <div className="otr-env-row-status">{envBadge("NOT_DEPLOYED")}</div>
+                            <div className="otr-env-row-actions">
+                              {ltd.approvalStatus === "APPROVED" && (
+                                <button
+                                  className="secondary"
+                                  style={{ fontSize: 11, padding: "2px 8px" }}
+                                  onClick={() => setDeployingTo(true)}
+                                >
+                                  <Plus size={11} style={{ marginRight: 3 }} />Deploy
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
                       return (
-                        <div key={env.id} className="otr-env-row otr-env-row--missing">
-                          <div className="otr-env-row-name">
-                            <span className="otr-env-badge otr-env-badge--missing">{env.name}</span>
-                            {env.isProduction && <span className="pill pill--red" style={{ fontSize: 9, padding: "1px 5px" }}>PROD</span>}
-                          </div>
-                          <div className="otr-env-row-status">{envBadge("NOT_DEPLOYED")}</div>
-                          <div className="otr-env-row-actions">
-                            {ltd.approvalStatus === "APPROVED" && (
-                              <button
-                                className="secondary"
-                                style={{ fontSize: 11, padding: "2px 8px" }}
-                                onClick={() => setDeployingTo(true)}
-                              >
-                                <Plus size={11} style={{ marginRight: 3 }} />Deploy
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                        <EnvDeploymentRow
+                          key={env.id}
+                          envDep={{ ...dep, environmentName: env.name, isProduction: env.isProduction }}
+                          onValidate={handleValidate}
+                        />
                       );
-                    }
-                    return (
-                      <EnvDeploymentRow
-                        key={env.id}
-                        envDep={{ ...dep, environmentName: env.name, isProduction: env.isProduction }}
-                        onValidate={handleValidate}
-                      />
-                    );
-                  })}
-                </>
-              )}
+                    })}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

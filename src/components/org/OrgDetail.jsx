@@ -432,6 +432,7 @@ export default function OrgDetail({ org, onBack, onOpenProject, onCreateProject,
   const [activeTab, setActiveTab] = useState("projects");
   const [showAddMember, setShowAddMember] = useState(false);
   const [orgPendingCount, setOrgPendingCount] = useState(0);
+  const [toolRegistryKey, setToolRegistryKey] = useState(0);
   const isPlatformAdmin = currentUser === "platform-admin@example.com";
   const myRole = org.members?.find((m) => m.userId === currentUser)?.role || (isPlatformAdmin ? "platform_admin" : null);
   const canCreateProject = isPlatformAdmin || myRole === "org_admin" || myRole === "org_member";
@@ -545,14 +546,20 @@ export default function OrgDetail({ org, onBack, onOpenProject, onCreateProject,
       {/* Tool Registry tab */}
       {activeTab === "tool-registry" && (
         <section className="panel">
-          <OrgToolRegistry org={org} />
+          <OrgToolRegistry key={toolRegistryKey} org={org} />
         </section>
       )}
 
       {/* Org Approvals tab */}
       {activeTab === "approvals" && (
         <section className="panel">
-          <OrgApprovals org={org} />
+          <OrgApprovals
+            org={org}
+            onApprovalDecided={() => {
+              setOrgPendingCount((c) => Math.max(0, c - 1));
+              setToolRegistryKey((k) => k + 1); // force Tool Registry to re-fetch
+            }}
+          />
         </section>
       )}
 

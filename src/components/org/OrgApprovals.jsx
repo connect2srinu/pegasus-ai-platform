@@ -216,7 +216,9 @@ function ToolRegistrationCard({ task, onDecide }) {
 
 // ── Main OrgApprovals ─────────────────────────────────────────────────────────
 
-export default function OrgApprovals({ org }) {
+export { ToolRegistrationCard };
+
+export default function OrgApprovals({ org, onApprovalDecided }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("pending");
@@ -233,10 +235,9 @@ export default function OrgApprovals({ org }) {
   useEffect(() => { load(); }, [load]);
 
   function handleDecide(result) {
-    // Optimistically update the task in state, then reload
     const decided = result.approvalTask;
     setTasks((prev) => prev.map((t) => t.id === decided.id ? { ...t, ...decided } : t));
-    // If all tasks for a TRR are now approved, the LTD was promoted — refresh
+    onApprovalDecided?.();
     load();
   }
 
