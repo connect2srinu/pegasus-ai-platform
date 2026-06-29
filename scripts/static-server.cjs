@@ -462,15 +462,64 @@ const SEED_DEPLOYMENTS = [
   },
 ];
 
+// ── Seed Environments ─────────────────────────────────────────────────────────
+// One set per org. promotionOrder controls valid promotion directions.
+const SEED_ENVIRONMENTS = [
+  // Acme Health
+  {
+    id: "env-acme-health-dev",
+    organizationId: "acme-health",
+    name: "DEV",
+    displayName: "Development",
+    description: "Development environment — non-production, no approval required for deployments.",
+    promotionOrder: 0,
+    isProduction: false,
+    requiresApproval: false,
+    status: "ACTIVE",
+    createdAt: "2025-01-01T00:00:00Z",
+    updatedAt: "2025-01-01T00:00:00Z",
+  },
+  {
+    id: "env-acme-health-prod",
+    organizationId: "acme-health",
+    name: "PROD",
+    displayName: "Production",
+    description: "Production environment — all deployments require platform admin approval.",
+    promotionOrder: 3,
+    isProduction: true,
+    requiresApproval: true,
+    status: "ACTIVE",
+    createdAt: "2025-01-01T00:00:00Z",
+    updatedAt: "2025-01-01T00:00:00Z",
+  },
+  // Acme Finance
+  {
+    id: "env-acme-finance-dev",
+    organizationId: "acme-finance",
+    name: "DEV",
+    displayName: "Development",
+    description: "Development environment.",
+    promotionOrder: 0,
+    isProduction: false,
+    requiresApproval: false,
+    status: "ACTIVE",
+    createdAt: "2025-02-01T00:00:00Z",
+    updatedAt: "2025-02-01T00:00:00Z",
+  },
+];
+
 const SEED_ACCOUNT_CONNECTIONS = [
   {
     id: "conn-acme-health-bu-001",
     organizationId: "acme-health",
+    environmentId: "env-acme-health-dev",       // linked to DEV environment
+    environmentType: "DEV",
     awsAccountId: "555666777888",
     accountName: "Acme Health – Business Unit Account",
-    environment: "production",
+    region: "us-east-1",
     discoveryRoleArn: "arn:aws:iam::555666777888:role/GuardianDiscoveryRole",
     provisioningRoleArn: "arn:aws:iam::555666777888:role/GuardianProvisioningRole",
+    deploymentRoleArn: "arn:aws:iam::555666777888:role/GuardianProvisioningRole",
     externalIdRef: "sm/guardian-acme-health-external-id",
     enabledRegions: ["us-east-1"],
     agentCoreGatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001",
@@ -480,6 +529,58 @@ const SEED_ACCOUNT_CONNECTIONS = [
     createdBy: "platform-admin@example.com",
     createdAt: "2025-02-15T10:00:00Z",
     updatedAt: "2025-05-01T06:00:00Z",
+  },
+];
+
+// ── Seed Environment Runtime Mappings ─────────────────────────────────────────
+// One per org per environment — the execution config for that env.
+const SEED_ENVIRONMENT_RUNTIME_MAPPINGS = [
+  {
+    id: "erm-acme-health-dev",
+    organizationId: "acme-health",
+    environmentId: "env-acme-health-dev",
+    awsAccountConnectionId: "conn-acme-health-bu-001",
+    region: "us-east-1",
+    agentCoreGatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001",
+    agentCoreGatewayId: "gw-acme-health-prod-001",
+    agentCoreGatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+    harnessExecutionRoleArn: "arn:aws:iam::123456789012:role/AgentCoreExecutionRole",
+    deploymentRoleArn: "arn:aws:iam::555666777888:role/GuardianProvisioningRole",
+    modelAccountId: "987654321098",
+    modelBindingRef: "acme-health-bedrock-models",
+    memoryArn: null,
+    credentialProviderRef: null,
+    kmsKeyArn: null,
+    vpcConfigJson: null,
+    logConfigJson: null,
+    policySetId: null,
+    status: "ACTIVE",
+    createdAt: "2025-02-15T10:00:00Z",
+    updatedAt: "2025-02-15T10:00:00Z",
+  },
+  // PROD runtime mapping placeholder — not yet configured
+  {
+    id: "erm-acme-health-prod",
+    organizationId: "acme-health",
+    environmentId: "env-acme-health-prod",
+    awsAccountConnectionId: null,              // PROD account not connected yet
+    region: "us-east-1",
+    agentCoreGatewayArn: null,
+    agentCoreGatewayId: null,
+    agentCoreGatewayUrl: null,
+    harnessExecutionRoleArn: null,
+    deploymentRoleArn: null,
+    modelAccountId: null,
+    modelBindingRef: null,
+    memoryArn: null,
+    credentialProviderRef: null,
+    kmsKeyArn: null,
+    vpcConfigJson: null,
+    logConfigJson: null,
+    policySetId: null,
+    status: "PENDING_SETUP",
+    createdAt: "2025-02-15T10:00:00Z",
+    updatedAt: "2025-02-15T10:00:00Z",
   },
 ];
 
@@ -643,13 +744,22 @@ function ensureRegistry() {
   registry.awsAccountMappings ||= [];
   registry.invocations ||= [];
   // Phase 1-3 collections
-  registry.awsAccountConnections   ||= [];
-  registry.inventorySyncRuns       ||= [];
-  registry.discoveredResources     ||= [];
-  registry.projectVisibleResources ||= [];
-  registry.toolRegistrationRequests||= [];
-  registry.gatewayTargetDeployments||= [];
-  registry.projectTools            ||= [];
+  registry.awsAccountConnections        ||= [];
+  registry.inventorySyncRuns            ||= [];
+  registry.discoveredResources          ||= [];
+  registry.projectVisibleResources      ||= [];
+  registry.toolRegistrationRequests     ||= [];
+  registry.gatewayTargetDeployments     ||= [];
+  registry.projectTools                 ||= [];
+  // Phase 4+ multi-environment collections
+  registry.organizationEnvironments     ||= [];
+  registry.environmentRuntimeMappings   ||= [];
+  registry.logicalToolDefinitions       ||= [];
+  registry.environmentToolDeployments   ||= [];
+  registry.agentToolBindings            ||= [];
+  registry.agentReleaseManifests        ||= [];
+  registry.agentEnvironmentDeployments  ||= [];
+  registry.projectToolGrants            ||= [];
   // Seed orgs if empty
   if (registry.organizations.length === 0) {
     registry.organizations = SEED_ORGS;
@@ -668,6 +778,47 @@ function ensureRegistry() {
   // Seed deployments if empty
   if (registry.deployments.length === 0) {
     registry.deployments = SEED_DEPLOYMENTS;
+  }
+  // Seed environments if empty
+  if (registry.organizationEnvironments.length === 0) {
+    registry.organizationEnvironments = SEED_ENVIRONMENTS;
+    // Seed local-dev environments when in local mode
+    if (process.env.LOCAL_AWS_MODE === "true") {
+      registry.organizationEnvironments.push(
+        { id: "env-local-dev-dev", organizationId: "local-dev", name: "DEV", displayName: "Development", description: "Local single-account dev environment.", promotionOrder: 0, isProduction: false, requiresApproval: false, status: "ACTIVE", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: "env-local-dev-prod", organizationId: "local-dev", name: "PROD", displayName: "Production", description: "Local single-account prod (simulated).", promotionOrder: 3, isProduction: true, requiresApproval: true, status: "ACTIVE", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+      );
+    }
+  }
+  // Seed environment runtime mappings if empty
+  if (registry.environmentRuntimeMappings.length === 0) {
+    registry.environmentRuntimeMappings = SEED_ENVIRONMENT_RUNTIME_MAPPINGS;
+  }
+  // Backfill: add environmentId to existing account connections that predate this field
+  for (const conn of registry.awsAccountConnections) {
+    if (!conn.environmentId) {
+      // Guess from the old free-form `environment` string field
+      const envName = conn.environmentType || (conn.environment === "production" ? "PROD" : "DEV");
+      const matchedEnv = registry.organizationEnvironments.find(
+        (e) => e.organizationId === conn.organizationId && e.name === envName
+      );
+      conn.environmentId   = matchedEnv?.id || null;
+      conn.environmentType = envName;
+      conn.deploymentRoleArn ||= conn.provisioningRoleArn || null;
+    }
+  }
+  // Backfill: add environmentId (null) to pre-existing deployments
+  for (const dep of registry.deployments) {
+    dep.environmentId ||= null;
+  }
+  // Backfill: mark pre-existing TRRs as project-scoped
+  for (const trr of registry.toolRegistrationRequests) {
+    trr.scope         ||= "project";
+    trr.environmentId ||= null;
+  }
+  // Backfill: logicalToolDefinitionId on existing projectTools
+  for (const pt of registry.projectTools) {
+    pt.logicalToolDefinitionId ||= null;
   }
   // Seed account connections if empty
   if (registry.awsAccountConnections.length === 0) {
@@ -1421,6 +1572,160 @@ async function handleApi(req, res, requestUrl) {
     return sendJson(res, 201, { project, orgId: org.id });
   }
 
+  // ── Organization Environments ─────────────────────────────────────────────
+
+  // GET /api/organizations/:orgId/environments
+  if (req.method === "GET" && parts[1] === "organizations" && parts[2] && parts[3] === "environments" && !parts[4]) {
+    const registry = readRegistry();
+    const org = (registry.organizations || []).find((o) => o.id === parts[2]);
+    if (!org) return sendJson(res, 404, { error: "Organization not found." });
+    const envs = (registry.organizationEnvironments || [])
+      .filter((e) => e.organizationId === parts[2])
+      .sort((a, b) => (a.promotionOrder ?? 99) - (b.promotionOrder ?? 99));
+    // Enrich each env with its runtime mapping summary
+    const enriched = envs.map((env) => {
+      const erm = (registry.environmentRuntimeMappings || []).find(
+        (m) => m.organizationId === parts[2] && m.environmentId === env.id
+      );
+      const conn = erm?.awsAccountConnectionId
+        ? (registry.awsAccountConnections || []).find((c) => c.id === erm.awsAccountConnectionId)
+        : null;
+      return {
+        ...env,
+        runtimeMapping: erm ? { id: erm.id, status: erm.status, agentCoreGatewayArn: erm.agentCoreGatewayArn, region: erm.region } : null,
+        awsAccountId: conn?.awsAccountId || null,
+      };
+    });
+    return sendJson(res, 200, { environments: enriched });
+  }
+
+  // POST /api/organizations/:orgId/environments
+  if (req.method === "POST" && parts[1] === "organizations" && parts[2] && parts[3] === "environments" && !parts[4]) {
+    const registry = readRegistry();
+    const org = (registry.organizations || []).find((o) => o.id === parts[2]);
+    if (!org) return sendJson(res, 404, { error: "Organization not found." });
+    const body = await readBody(req);
+    const validNames = ["DEV", "TEST", "STAGE", "PROD"];
+    const envName = (body.name || "").toUpperCase().trim();
+    if (!validNames.includes(envName)) return sendJson(res, 400, { error: `name must be one of: ${validNames.join(", ")}` });
+    const existing = (registry.organizationEnvironments || []).find(
+      (e) => e.organizationId === parts[2] && e.name === envName
+    );
+    if (existing) return sendJson(res, 409, { error: `Environment '${envName}' already exists in this organization.` });
+    const envId = `env-${slug(parts[2])}-${envName.toLowerCase()}-${Date.now()}`;
+    const env = {
+      id: envId,
+      organizationId: parts[2],
+      name: envName,
+      displayName: body.displayName || (envName === "PROD" ? "Production" : envName === "STAGE" ? "Staging" : envName === "TEST" ? "Testing" : "Development"),
+      description: (body.description || "").trim(),
+      promotionOrder: body.promotionOrder ?? { DEV: 0, TEST: 1, STAGE: 2, PROD: 3 }[envName] ?? 99,
+      isProduction: body.isProduction ?? (envName === "PROD" || envName === "STAGE"),
+      requiresApproval: body.requiresApproval ?? (envName === "PROD" || envName === "STAGE"),
+      status: "ACTIVE",
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    registry.organizationEnvironments = registry.organizationEnvironments || [];
+    registry.organizationEnvironments.push(env);
+    addAudit(registry, "org.environment.created", { orgId: parts[2], envId, name: envName });
+    writeRegistry(registry);
+    return sendJson(res, 201, { environment: env });
+  }
+
+  // GET /api/organizations/:orgId/environments/:envId
+  if (req.method === "GET" && parts[1] === "organizations" && parts[2] && parts[3] === "environments" && parts[4] && !parts[5]) {
+    const registry = readRegistry();
+    const env = (registry.organizationEnvironments || []).find(
+      (e) => e.id === parts[4] && e.organizationId === parts[2]
+    );
+    if (!env) return sendJson(res, 404, { error: "Environment not found." });
+    const erm = (registry.environmentRuntimeMappings || []).find(
+      (m) => m.organizationId === parts[2] && m.environmentId === parts[4]
+    );
+    return sendJson(res, 200, { environment: env, runtimeMapping: erm || null });
+  }
+
+  // PATCH /api/organizations/:orgId/environments/:envId
+  if (req.method === "PATCH" && parts[1] === "organizations" && parts[2] && parts[3] === "environments" && parts[4] && !parts[5]) {
+    const registry = readRegistry();
+    const env = (registry.organizationEnvironments || []).find(
+      (e) => e.id === parts[4] && e.organizationId === parts[2]
+    );
+    if (!env) return sendJson(res, 404, { error: "Environment not found." });
+    const body = await readBody(req);
+    if (body.displayName !== undefined) env.displayName = body.displayName;
+    if (body.description !== undefined) env.description = body.description;
+    if (body.promotionOrder !== undefined) env.promotionOrder = body.promotionOrder;
+    if (body.isProduction !== undefined) env.isProduction = body.isProduction;
+    if (body.requiresApproval !== undefined) env.requiresApproval = body.requiresApproval;
+    if (body.status !== undefined) env.status = body.status;
+    env.updatedAt = now();
+    addAudit(registry, "org.environment.updated", { orgId: parts[2], envId: parts[4] });
+    writeRegistry(registry);
+    return sendJson(res, 200, { environment: env });
+  }
+
+  // ── Environment Runtime Mappings ──────────────────────────────────────────
+
+  // GET /api/organizations/:orgId/environments/:envId/runtime-mapping
+  if (req.method === "GET" && parts[1] === "organizations" && parts[2] && parts[3] === "environments" && parts[4] && parts[5] === "runtime-mapping") {
+    const registry = readRegistry();
+    const erm = (registry.environmentRuntimeMappings || []).find(
+      (m) => m.organizationId === parts[2] && m.environmentId === parts[4]
+    );
+    return sendJson(res, 200, { runtimeMapping: erm || null });
+  }
+
+  // POST /api/organizations/:orgId/environments/:envId/runtime-mapping — create
+  // PUT  /api/organizations/:orgId/environments/:envId/runtime-mapping — upsert
+  if ((req.method === "POST" || req.method === "PUT") && parts[1] === "organizations" && parts[2] && parts[3] === "environments" && parts[4] && parts[5] === "runtime-mapping") {
+    const registry = readRegistry();
+    const env = (registry.organizationEnvironments || []).find(
+      (e) => e.id === parts[4] && e.organizationId === parts[2]
+    );
+    if (!env) return sendJson(res, 404, { error: "Environment not found." });
+    const body = await readBody(req);
+    // Validate account connection belongs to this org+env
+    if (body.awsAccountConnectionId) {
+      const conn = (registry.awsAccountConnections || []).find((c) => c.id === body.awsAccountConnectionId && c.organizationId === parts[2]);
+      if (!conn) return sendJson(res, 400, { error: "awsAccountConnectionId not found in this organization." });
+    }
+    // ARN cross-account check: gateway ARN account must match the connection's account
+    // ARN format: arn:aws:service:region:accountId:resource — accountId is at index 4
+    if (body.agentCoreGatewayArn && body.awsAccountConnectionId) {
+      const conn = (registry.awsAccountConnections || []).find((c) => c.id === body.awsAccountConnectionId);
+      const arnAccount = (body.agentCoreGatewayArn.split(":")[4] || "").trim();
+      if (arnAccount && conn && arnAccount !== conn.awsAccountId) {
+        return sendJson(res, 400, { error: `Gateway ARN account (${arnAccount}) does not match connection account (${conn.awsAccountId}). Do not mix accounts in a runtime mapping.` });
+      }
+    }
+    let erm = (registry.environmentRuntimeMappings || []).find(
+      (m) => m.organizationId === parts[2] && m.environmentId === parts[4]
+    );
+    const isNew = !erm;
+    if (isNew) {
+      erm = { id: `erm-${slug(parts[2])}-${slug(parts[4])}-${Date.now()}`, organizationId: parts[2], environmentId: parts[4], createdAt: now() };
+      registry.environmentRuntimeMappings = registry.environmentRuntimeMappings || [];
+      registry.environmentRuntimeMappings.push(erm);
+    }
+    // Apply all provided fields
+    const fields = ["awsAccountConnectionId","region","agentCoreGatewayArn","agentCoreGatewayId","agentCoreGatewayUrl",
+      "harnessExecutionRoleArn","deploymentRoleArn","modelAccountId","modelBindingRef","memoryArn",
+      "credentialProviderRef","kmsKeyArn","vpcConfigJson","logConfigJson","policySetId","status"];
+    for (const f of fields) {
+      if (body[f] !== undefined) erm[f] = body[f];
+    }
+    // Auto-set status ACTIVE if gateway ARN and execution role are configured
+    if (erm.agentCoreGatewayArn && erm.harnessExecutionRoleArn && !body.status) {
+      erm.status = "ACTIVE";
+    }
+    erm.updatedAt = now();
+    addAudit(registry, isNew ? "org.runtime-mapping.created" : "org.runtime-mapping.updated", { orgId: parts[2], envId: parts[4], ermId: erm.id });
+    writeRegistry(registry);
+    return sendJson(res, isNew ? 201 : 200, { runtimeMapping: erm });
+  }
+
   // GET /api/local/runtimes — list real AgentCore runtimes in the account (local mode only)
   if (req.method === "GET" && requestUrl.pathname === "/api/local/runtimes") {
     if (!isLocalAwsMode()) return sendJson(res, 200, { localAwsMode: false, runtimes: [] });
@@ -2080,17 +2385,31 @@ async function handleApi(req, res, requestUrl) {
     if (/AKIA|BEGIN|password|token[-_]?value/i.test(body.externalIdRef || "")) {
       return sendJson(res, 400, { error: "externalIdRef must be a secret reference name, never a raw secret value." });
     }
+    // Validate environmentId if provided
+    if (body.environmentId) {
+      const envExists = (registry.organizationEnvironments || []).some(
+        (e) => e.id === body.environmentId && e.organizationId === parts[2]
+      );
+      if (!envExists) return sendJson(res, 400, { error: "environmentId does not belong to this organization." });
+    }
+    // Resolve environmentType from the linked environment
+    const linkedEnv = body.environmentId
+      ? (registry.organizationEnvironments || []).find((e) => e.id === body.environmentId)
+      : null;
     const connId = `conn-${slug(org.id)}-${Date.now()}`;
     const connection = {
       id: connId,
       organizationId: parts[2],
+      environmentId: body.environmentId || null,
+      environmentType: linkedEnv?.name || body.environment || "DEV",
       awsAccountId: body.awsAccountId.trim(),
       accountName: (body.accountName || "").trim(),
-      environment: body.environment || "production",
+      region: body.region || "us-east-1",
       discoveryRoleArn: body.discoveryRoleArn.trim(),
       provisioningRoleArn: body.provisioningRoleArn.trim(),
+      deploymentRoleArn: body.deploymentRoleArn || body.provisioningRoleArn.trim(),
       externalIdRef: body.externalIdRef || null,
-      enabledRegions: body.enabledRegions || ["us-east-1"],
+      enabledRegions: body.enabledRegions || [body.region || "us-east-1"],
       agentCoreGatewayArn: body.agentCoreGatewayArn || null,
       agentCoreGatewayUrl: body.agentCoreGatewayUrl || null,
       status: "PENDING_SYNC",
@@ -2516,6 +2835,30 @@ server.listen(port, host, async () => {
         } else {
           console.warn("[server] No Bedrock models returned — check IAM permissions (bedrock:ListFoundationModels).");
         }
+        // Also patch/create the local-dev DEV environment runtime mapping
+        const devConnId = (registry.awsAccountConnections || []).find(
+          (c) => c.organizationId === "local-dev" && c.environmentType === "DEV"
+        )?.id || null;
+        const devEnvId = "env-local-dev-dev";
+        let erm = (registry.environmentRuntimeMappings || []).find(
+          (m) => m.organizationId === "local-dev" && m.environmentId === devEnvId
+        );
+        if (!erm) {
+          erm = { id: "erm-local-dev-dev", organizationId: "local-dev", environmentId: devEnvId };
+          registry.environmentRuntimeMappings = registry.environmentRuntimeMappings || [];
+          registry.environmentRuntimeMappings.push(erm);
+        }
+        erm.awsAccountConnectionId = devConnId;
+        erm.region = ctx.region;
+        erm.agentCoreGatewayArn = null;   // updated when gateway is provisioned
+        erm.agentCoreGatewayId = null;
+        erm.agentCoreGatewayUrl = null;
+        erm.harnessExecutionRoleArn = `arn:aws:iam::${ctx.accountId}:role/AgentCoreExecutionRole`;
+        erm.deploymentRoleArn = null;     // same-account, no assume-role needed
+        erm.modelAccountId = ctx.accountId;
+        erm.modelBindingRef = "local-dev-bedrock-models";
+        erm.status = "ACTIVE";
+        erm.updatedAt = new Date().toISOString();
         writeRegistry(registry);
       }
     } catch (err) {
