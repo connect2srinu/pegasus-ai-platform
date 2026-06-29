@@ -5,6 +5,7 @@ import { api } from "../../utils.js";
 import { fallback, ORG_ROLES, BEDROCK_MODELS } from "../../constants.js";
 import AwsAccountConnectionForm from "./AwsAccountConnectionForm.jsx";
 import InventoryCatalog from "./InventoryCatalog.jsx";
+import OrgToolRegistry from "./OrgToolRegistry.jsx";
 
 function ProjectCard({ project, onOpen }) {
   const stats = fallback[project.name] || {};
@@ -462,6 +463,7 @@ export default function OrgDetail({ org, onBack, onOpenProject, onCreateProject,
       <div className="org-tabs">
         {[
           ["projects", "Projects"],
+          ["tool-registry", "Tool Registry"],
           ["members", "Members & Roles"],
           ["accounts", "Connected Accounts"],
           ["aws", "Platform AWS Config"],
@@ -524,6 +526,13 @@ export default function OrgDetail({ org, onBack, onOpenProject, onCreateProject,
               </tr>
             ))}
           </Table>
+        </section>
+      )}
+
+      {/* Tool Registry tab */}
+      {activeTab === "tool-registry" && (
+        <section className="panel">
+          <OrgToolRegistry org={org} />
         </section>
       )}
 

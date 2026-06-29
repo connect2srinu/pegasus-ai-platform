@@ -1926,3 +1926,147 @@ textarea {
 .review-section h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .review-row { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; margin-bottom: 4px; }
 .review-row span:first-child { color: var(--muted); min-width: 110px; flex-shrink: 0; }
+
+/* ── Org Tool Registry ─────────────────────────────────────────────────────── */
+.otr-root { }
+
+.otr-summary-strip {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.otr-summary-stat { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.otr-summary-stat strong { font-size: 16px; }
+.otr-env-legend { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.otr-env-legend-item { display: flex; align-items: center; gap: 4px; }
+
+/* Tool cards */
+.otr-tool-list { display: flex; flex-direction: column; gap: 8px; }
+.otr-tool-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+}
+.otr-tool-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.otr-tool-card--drift { border-left: 3px solid var(--red); }
+.otr-tool-card--stale { border-left: 3px solid var(--amber); }
+
+.otr-tool-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.otr-tool-card-header:hover { background: var(--surface-soft); }
+
+.otr-tool-card-icon {
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.otr-tool-card-meta { flex: 1; min-width: 0; }
+.otr-tool-card-right {
+  display: flex; align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+/* Env coverage dots */
+.otr-env-coverage { display: flex; gap: 4px; align-items: center; }
+.otr-env-dot {
+  width: 20px; height: 20px;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700;
+  flex-shrink: 0;
+}
+.otr-env-dot--active  { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+.otr-env-dot--missing { background: var(--surface-soft); color: var(--muted); border: 1px solid var(--line); }
+.otr-env-dot--stale   { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.otr-env-dot--drift   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.otr-env-dot-label { pointer-events: none; }
+
+/* Card body */
+.otr-tool-card-body {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--line);
+}
+.otr-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 20px;
+  margin-top: 14px;
+}
+@media (max-width: 760px) { .otr-detail-grid { grid-template-columns: 1fr; } }
+
+.otr-info-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.otr-info-table td { padding: 3px 6px 3px 0; vertical-align: top; }
+.otr-info-table td:first-child { width: 120px; }
+
+/* Env deployment rows */
+.otr-env-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.otr-env-row:last-child { border-bottom: none; }
+.otr-env-row--missing { opacity: 0.7; }
+.otr-env-row-name { display: flex; align-items: center; gap: 6px; width: 80px; flex-shrink: 0; }
+.otr-env-row-status { flex: 1; }
+.otr-env-row-actions { flex-shrink: 0; }
+
+.otr-env-badge {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+.otr-env-badge--missing { color: var(--muted); border-style: dashed; }
+
+/* Register form */
+.otr-register-form {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+/* Deploy form */
+.otr-deploy-form {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  color: var(--muted);
+  display: flex; align-items: center;
+}
+.icon-btn:hover { color: var(--ink); }
