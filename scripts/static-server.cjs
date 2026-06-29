@@ -1412,7 +1412,57 @@ async function handleApi(req, res, requestUrl) {
           // Promote the linked LTD to APPROVED + ACTIVE
           if (trr.logicalToolDefinitionId) {
             ltd = (registry.logicalToolDefinitions || []).find((l) => l.id === trr.logicalToolDefinitionId);
-            if (ltd) { ltd.approvalStatus = "APPROVED"; ltd.status = "ACTIVE"; ltd.updatedAt = now(); }
+            if (ltd) {
+              ltd.approvalStatus = "APPROVED";
+              ltd.status = "ACTIVE";
+              ltd.updatedAt = now();
+
+              // Auto-create DEV environment deployment — resource already exists in DEV account
+              const devEnv = (registry.organizationEnvironments || []).find(
+                (e) => e.organizationId === ltd.organizationId && !e.isProduction && e.promotionOrder === 0
+              );
+              const alreadyHasDevEtd = (registry.environmentToolDeployments || []).some(
+                (e) => e.logicalToolDefinitionId === ltd.id && e.environmentId === devEnv?.id
+              );
+              if (devEnv && !alreadyHasDevEtd) {
+                const devConn = (registry.awsAccountConnections || []).find(
+                  (c) => c.organizationId === ltd.organizationId && c.environmentId === devEnv.id
+                );
+                const devErm = (registry.environmentRuntimeMappings || []).find(
+                  (m) => m.organizationId === ltd.organizationId && m.environmentId === devEnv.id
+                );
+                if (devConn) {
+                  const autoEtd = {
+                    id: `etd-${ltd.id}-auto-dev`,
+                    organizationId: ltd.organizationId,
+                    logicalToolDefinitionId: ltd.id,
+                    environmentId: devEnv.id,
+                    awsAccountConnectionId: devConn.id,
+                    sourceDiscoveredResourceId: trr.sourceDiscoveredResourceId || null,
+                    sourceResourceArn: trr.sourceResourceArn || null,
+                    gatewayArn: devErm?.agentCoreGatewayArn || devConn.agentCoreGatewayArn || null,
+                    gatewayUrl: devErm?.agentCoreGatewayUrl || devConn.agentCoreGatewayUrl || null,
+                    gatewayTargetId: `tgt-${ltd.toolKey.replace(/_/g, "-")}`,
+                    mcpToolName: ltd.toolKey,
+                    sourceEndpoint: trr.sourceEndpoint || null,
+                    credentialProviderRef: trr.credentialProviderRef || null,
+                    toolInvocationRoleArn: devConn.deploymentRoleArn || null,
+                    policySetId: null,
+                    deploymentStatus: "ACTIVE",
+                    schemaChecksum: ltd.checksum || null,
+                    lastValidatedAt: now(),
+                    createdAt: now(),
+                    updatedAt: now(),
+                    autoProvisioned: true,
+                  };
+                  registry.environmentToolDeployments = registry.environmentToolDeployments || [];
+                  registry.environmentToolDeployments.push(autoEtd);
+                  addAudit(registry, "tool.env-deployment.auto-created", {
+                    etdId: autoEtd.id, ltdId: ltd.id, envId: devEnv.id, trigger: "approval",
+                  });
+                }
+              }
+            }
           }
         }
         trr.updatedAt = now();
@@ -3000,6 +3050,7 @@ async function handleApi(req, res, requestUrl) {
         grantId: grant.id,
         environmentId: grant.environmentId,
         sourceType: "ORG_TOOL_GRANT",
+        ltdSourceType: ltd.sourceType,   // e.g. LAMBDA, API_GATEWAY — for UI icon
         gatewayArn: etd.gatewayArn,
         gatewayUrl: etd.gatewayUrl,
         gatewayTargetId: etd.gatewayTargetId,
@@ -3354,9 +3405,9 @@ async function handleApi(req, res, requestUrl) {
     );
     if (!etd) return sendJson(res, 409, { error: "Tool is not deployed in that environment (or has schema drift). Deploy it first, then re-validate if drift was detected." });
 
-    // Verify project belongs to org
-    const allProjects = Object.values(registry.projects || {});
-    const project = allProjects.find((p) => p.id === projectId && p.organizationId === orgId);
+    // Verify project belongs to org (projects live inside org.projects[])
+    const orgRecord = (registry.organizations || []).find((o) => o.id === orgId);
+    const project = (orgRecord?.projects || []).find((p) => p.id === projectId);
     if (!project) return sendJson(res, 404, { error: "Project not found in this organization." });
 
     // Check duplicate
@@ -3381,6 +3432,230 @@ async function handleApi(req, res, requestUrl) {
     addAudit(registry, "tool.grant.created", { grantId: grant.id, ltdId, projectId, environmentId });
     writeRegistry(registry);
     return sendJson(res, 201, { projectToolGrant: grant });
+  }
+
+  // GET /api/projects/:pid/available-org-tools — org tools approved + DEV ETD exists, not yet enabled for this project
+  if (req.method === "GET" && parts[1] === "projects" && parts[2] && parts[3] === "available-org-tools") {
+    const registry = readRegistry();
+    const pid = parts[2];
+    // Projects live inside org.projects[] arrays
+    let project = null;
+    for (const org of (registry.organizations || [])) {
+      const found = (org.projects || []).find((p) => p.id === pid);
+      if (found) { project = { ...found, organizationId: org.id }; break; }
+    }
+    if (!project) return sendJson(res, 404, { error: "Project not found." });
+    const orgId = project.organizationId;
+
+    // DEV environment for this org
+    const devEnv = (registry.organizationEnvironments || []).find(
+      (e) => e.organizationId === orgId && !e.isProduction && e.promotionOrder === 0
+    );
+    if (!devEnv) return sendJson(res, 200, { availableTools: [] });
+
+    // All active DEV ETDs
+    const devEtdByLtdId = {};
+    for (const etd of (registry.environmentToolDeployments || [])) {
+      if (etd.environmentId === devEnv.id && etd.deploymentStatus === "ACTIVE") {
+        devEtdByLtdId[etd.logicalToolDefinitionId] = etd;
+      }
+    }
+
+    // Already-enabled grants for this project + DEV
+    const enabledLtdIds = new Set(
+      (registry.projectToolGrants || [])
+        .filter((g) => g.projectId === pid && g.environmentId === devEnv.id && g.grantStatus === "ACTIVE")
+        .map((g) => g.logicalToolDefinitionId)
+    );
+
+    // Approved LTDs that have a DEV ETD but are not yet enabled for this project
+    const available = (registry.logicalToolDefinitions || [])
+      .filter((l) => l.organizationId === orgId && l.approvalStatus === "APPROVED" && devEtdByLtdId[l.id] && !enabledLtdIds.has(l.id))
+      .map((l) => ({ ...l, devEtd: devEtdByLtdId[l.id] }));
+
+    return sendJson(res, 200, { availableTools: available, devEnvironmentId: devEnv.id });
+  }
+
+  // POST /api/projects/:pid/enable-org-tool — enable an approved org tool for DEV use in this project
+  if (req.method === "POST" && parts[1] === "projects" && parts[2] && parts[3] === "enable-org-tool") {
+    const registry = readRegistry();
+    const pid = parts[2];
+    const body = await readBody(req);
+    const { logicalToolDefinitionId, enabledBy } = body;
+
+    if (!logicalToolDefinitionId) return sendJson(res, 400, { error: "logicalToolDefinitionId is required." });
+
+    let project = null;
+    for (const org of (registry.organizations || [])) {
+      const found = (org.projects || []).find((p) => p.id === pid);
+      if (found) { project = { ...found, organizationId: org.id }; break; }
+    }
+    if (!project) return sendJson(res, 404, { error: "Project not found." });
+    const orgId = project.organizationId;
+
+    const ltd = (registry.logicalToolDefinitions || []).find((l) => l.id === logicalToolDefinitionId && l.organizationId === orgId);
+    if (!ltd) return sendJson(res, 404, { error: "Tool not found in this organization." });
+    if (ltd.approvalStatus !== "APPROVED") return sendJson(res, 409, { error: "Tool is not yet approved." });
+
+    const devEnv = (registry.organizationEnvironments || []).find(
+      (e) => e.organizationId === orgId && !e.isProduction && e.promotionOrder === 0
+    );
+    if (!devEnv) return sendJson(res, 422, { error: "No DEV environment configured for this organization." });
+
+    const devEtd = (registry.environmentToolDeployments || []).find(
+      (e) => e.logicalToolDefinitionId === logicalToolDefinitionId && e.environmentId === devEnv.id && e.deploymentStatus === "ACTIVE"
+    );
+    if (!devEtd) return sendJson(res, 409, { error: "Tool does not have an active DEV deployment yet." });
+
+    const existing = (registry.projectToolGrants || []).find(
+      (g) => g.logicalToolDefinitionId === logicalToolDefinitionId && g.projectId === pid && g.environmentId === devEnv.id && g.grantStatus === "ACTIVE"
+    );
+    if (existing) return sendJson(res, 409, { error: "Tool is already enabled for this project." });
+
+    const grant = {
+      id: `ptg-${logicalToolDefinitionId}-${pid}-dev-${Date.now()}`,
+      organizationId: orgId,
+      projectId: pid,
+      logicalToolDefinitionId,
+      environmentId: devEnv.id,
+      grantedBy: enabledBy || "project-admin@example.com",
+      grantStatus: "ACTIVE",
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    registry.projectToolGrants = registry.projectToolGrants || [];
+    registry.projectToolGrants.push(grant);
+    addAudit(registry, "tool.grant.project-enabled", { grantId: grant.id, ltdId: logicalToolDefinitionId, projectId: pid, envId: devEnv.id });
+    writeRegistry(registry);
+    return sendJson(res, 201, { projectToolGrant: grant, logicalToolDefinition: ltd });
+  }
+
+  // POST /api/agents/:agentId/versions/:versionId/promote — promote agent + tools to PROD
+  if (req.method === "POST" && parts[1] === "agents" && parts[2] && parts[3] === "versions" && parts[4] && parts[5] === "promote") {
+    const registry = readRegistry();
+    const agent = (registry.agents || []).find((a) => a.id === parts[2]);
+    if (!agent) return sendJson(res, 404, { error: "Agent not found." });
+    const version = (agent.versions || []).find((v) => v.id === parts[4]);
+    if (!version) return sendJson(res, 404, { error: "Version not found." });
+    if (version.lifecycleState !== "approved") {
+      return sendJson(res, 422, { error: `Promotion blocked: version lifecycle state is '${version.lifecycleState}'. Only approved versions can be promoted.` });
+    }
+
+    const orgId = agent.organizationId;
+    const pid = agent.projectId;
+
+    // Find DEV and PROD environments
+    const devEnv = (registry.organizationEnvironments || []).find(
+      (e) => e.organizationId === orgId && !e.isProduction && e.promotionOrder === 0
+    );
+    const prodEnv = (registry.organizationEnvironments || []).find(
+      (e) => e.organizationId === orgId && e.isProduction
+    );
+    if (!prodEnv) return sendJson(res, 422, { error: "No PROD environment configured." });
+
+    const prodConn = (registry.awsAccountConnections || []).find(
+      (c) => c.organizationId === orgId && c.environmentId === prodEnv.id
+    );
+    if (!prodConn) return sendJson(res, 422, { error: "No PROD account connection found. Connect the production AWS account first." });
+
+    const prodErm = (registry.environmentRuntimeMappings || []).find(
+      (m) => m.organizationId === orgId && m.environmentId === prodEnv.id
+    );
+
+    // Find all tools enabled for this project in DEV
+    const devGrants = (registry.projectToolGrants || []).filter(
+      (g) => g.projectId === pid && g.environmentId === devEnv?.id && g.grantStatus === "ACTIVE"
+    );
+
+    const promotedTools = [];
+    const skippedTools  = [];
+
+    for (const grant of devGrants) {
+      const ltd = (registry.logicalToolDefinitions || []).find((l) => l.id === grant.logicalToolDefinitionId);
+      if (!ltd) continue;
+
+      // Skip if PROD grant already exists
+      const existingProdGrant = (registry.projectToolGrants || []).find(
+        (g) => g.logicalToolDefinitionId === ltd.id && g.projectId === pid && g.environmentId === prodEnv.id && g.grantStatus === "ACTIVE"
+      );
+      if (existingProdGrant) { skippedTools.push({ ltdId: ltd.id, toolKey: ltd.toolKey, reason: "already granted in PROD" }); continue; }
+
+      // Derive PROD ETD — reuse existing if already there, otherwise create by convention
+      let prodEtd = (registry.environmentToolDeployments || []).find(
+        (e) => e.logicalToolDefinitionId === ltd.id && e.environmentId === prodEnv.id
+      );
+
+      if (!prodEtd) {
+        // Derive PROD ARN: swap account ID in sourceResourceArn
+        const devEtd = (registry.environmentToolDeployments || []).find(
+          (e) => e.logicalToolDefinitionId === ltd.id && e.environmentId === devEnv?.id
+        );
+        let prodSourceArn = null;
+        if (devEtd?.sourceResourceArn) {
+          const parts = devEtd.sourceResourceArn.split(":");
+          parts[4] = prodConn.awsAccountId; // swap account ID
+          prodSourceArn = parts.join(":");
+        }
+
+        prodEtd = {
+          id: `etd-${ltd.id}-prod-auto`,
+          organizationId: orgId,
+          logicalToolDefinitionId: ltd.id,
+          environmentId: prodEnv.id,
+          awsAccountConnectionId: prodConn.id,
+          sourceResourceArn: prodSourceArn,
+          gatewayArn: prodErm?.agentCoreGatewayArn || prodConn.agentCoreGatewayArn || null,
+          gatewayUrl: prodErm?.agentCoreGatewayUrl || prodConn.agentCoreGatewayUrl || null,
+          gatewayTargetId: `tgt-${ltd.toolKey.replace(/_/g, "-")}-prod`,
+          mcpToolName: ltd.toolKey,
+          credentialProviderRef: null,
+          toolInvocationRoleArn: prodConn.deploymentRoleArn || null,
+          policySetId: null,
+          deploymentStatus: "ACTIVE",
+          schemaChecksum: ltd.checksum || null,
+          lastValidatedAt: now(),
+          createdAt: now(),
+          updatedAt: now(),
+          autoProvisioned: true,
+          derivedFromEnv: devEnv?.id,
+        };
+        registry.environmentToolDeployments = registry.environmentToolDeployments || [];
+        registry.environmentToolDeployments.push(prodEtd);
+        addAudit(registry, "tool.env-deployment.auto-created", { etdId: prodEtd.id, ltdId: ltd.id, envId: prodEnv.id, trigger: "agent-promotion" });
+      }
+
+      // Create PROD project grant
+      const prodGrant = {
+        id: `ptg-${ltd.id}-${pid}-prod-${Date.now()}`,
+        organizationId: orgId,
+        projectId: pid,
+        logicalToolDefinitionId: ltd.id,
+        environmentId: prodEnv.id,
+        grantedBy: "platform-admin@example.com",
+        grantStatus: "ACTIVE",
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      registry.projectToolGrants.push(prodGrant);
+      promotedTools.push({ ltdId: ltd.id, toolKey: ltd.toolKey, prodEtdId: prodEtd.id, prodGrantId: prodGrant.id, derivedProdArn: prodEtd.sourceResourceArn });
+    }
+
+    // Advance agent version to promoted state
+    version.lifecycleState = "promoted";
+    version.promotedAt = now();
+    version.promotedEnvironmentId = prodEnv.id;
+    agent.updatedAt = now();
+
+    addAudit(registry, "agent.promoted", { agentId: agent.id, versionId: version.id, orgId, prodEnvId: prodEnv.id, toolsPromoted: promotedTools.length });
+    writeRegistry(registry);
+    return sendJson(res, 200, {
+      agent,
+      version,
+      promotedEnvironment: { id: prodEnv.id, name: prodEnv.name },
+      promotedTools,
+      skippedTools,
+      summary: `${promotedTools.length} tool(s) auto-deployed to PROD, ${skippedTools.length} already present.`,
+    });
   }
 
   return sendJson(res, 404, { error: "API route not found." });

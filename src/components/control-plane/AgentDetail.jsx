@@ -4,6 +4,7 @@ import { titleCase, api } from "../../utils.js";
 import { PACKAGE_SOURCE_TYPES } from "../../constants.js";
 import PackageValidationResults from "./PackageValidationResults.jsx";
 import DeploymentStatus from "./DeploymentStatus.jsx";
+import { PromoteToProductionPanel } from "./Tools.jsx";
 
 function MetaRow({ label, value }) {
   if (!value) return null;
@@ -201,6 +202,14 @@ export default function AgentDetail({ agent, setScreen, setPlane }) {
                   onDeployed={() => agent.id && loadDeployments(agent.id)}
                 />
             }
+            {/* Promote to PROD — shown when agent version is approved and not yet promoted */}
+            {version && version.lifecycleState === "approved" && version.lifecycleState !== "promoted" && (
+              <PromoteToProductionPanel
+                agent={agent}
+                version={version}
+                onPromoted={() => agent.id && loadDeployments(agent.id)}
+              />
+            )}
           </>
         )}
       </section>

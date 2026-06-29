@@ -843,8 +843,9 @@ function ToolCard({ ltd, environments, connections, orgId, onRefresh }) {
                       className="secondary"
                       style={{ fontSize: 11, padding: "2px 8px", marginLeft: "auto" }}
                       onClick={() => setDeployingTo(true)}
+                      title="DEV is auto-deployed on approval. Use this to manually deploy to PROD or other environments."
                     >
-                      <ArrowRight size={11} style={{ marginRight: 3 }} />Deploy to env
+                      <ArrowRight size={11} style={{ marginRight: 3 }} />Deploy to env (PROD)
                     </button>
                   )}
                 </div>
@@ -873,14 +874,17 @@ function ToolCard({ ltd, environments, connections, orgId, onRefresh }) {
                             </div>
                             <div className="otr-env-row-status">{envBadge("NOT_DEPLOYED")}</div>
                             <div className="otr-env-row-actions">
-                              {ltd.approvalStatus === "APPROVED" && (
+                              {ltd.approvalStatus === "APPROVED" && env.isProduction && (
                                 <button
                                   className="secondary"
                                   style={{ fontSize: 11, padding: "2px 8px" }}
                                   onClick={() => setDeployingTo(true)}
                                 >
-                                  <Plus size={11} style={{ marginRight: 3 }} />Deploy
+                                  <Plus size={11} style={{ marginRight: 3 }} />Deploy to PROD
                                 </button>
+                              )}
+                              {ltd.approvalStatus === "APPROVED" && !env.isProduction && (
+                                <span className="muted" style={{ fontSize: 10 }}>auto-deploys on approval</span>
                               )}
                             </div>
                           </div>
