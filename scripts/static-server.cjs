@@ -584,6 +584,37 @@ const SEED_ENVIRONMENT_RUNTIME_MAPPINGS = [
   },
 ];
 
+// ── Seed Logical Tool Definitions ────────────────────────────────────────────
+// These are the env-neutral canonical definitions. Each has one or more
+// EnvironmentToolDeployments that realize it in a specific AWS account/env.
+const SEED_LOGICAL_TOOL_DEFINITIONS = [
+  { id: "ltd-claim-lookup",    organizationId: "acme-health", toolKey: "claim_lookup",    displayName: "Claim Lookup",    description: "Look up claim details, status, and processing history by claim ID.",                                                     sourceType: "LAMBDA",      inputSchemaJson: JSON.stringify({ type: "object", properties: { claim_id:   { type: "string" } }, required: ["claim_id"]   }), outputSchemaJson: JSON.stringify({ type: "object", properties: { claim: { type: "object" }, status: { type: "string" } } }), businessOwner: "priya@example.com",  dataClassification: "internal",      sideEffectLevel: "READ_ONLY",  version: "v1", status: "ACTIVE", approvalStatus: "APPROVED", checksum: "sha256:claimlookupv1abc",    createdBy: "platform-admin@example.com", createdAt: "2025-03-01T09:00:00Z", updatedAt: "2025-05-01T06:00:00Z" },
+  { id: "ltd-policy-lookup",   organizationId: "acme-health", toolKey: "policy_lookup",   displayName: "Policy Lookup",   description: "Retrieve insurance policy details and coverage terms by policy number.",                                                   sourceType: "LAMBDA",      inputSchemaJson: JSON.stringify({ type: "object", properties: { policy_number: { type: "string" } }, required: ["policy_number"] }), outputSchemaJson: null, businessOwner: "priya@example.com",  dataClassification: "internal",      sideEffectLevel: "READ_ONLY",  version: "v1", status: "ACTIVE", approvalStatus: "APPROVED", checksum: "sha256:policylookupv1def",   createdBy: "platform-admin@example.com", createdAt: "2025-03-01T09:00:00Z", updatedAt: "2025-05-01T06:00:00Z" },
+  { id: "ltd-member-lookup",   organizationId: "acme-health", toolKey: "member_lookup",   displayName: "Member Lookup",   description: "Look up member profile, enrollment, and plan details.",                                                                 sourceType: "LAMBDA",      inputSchemaJson: JSON.stringify({ type: "object", properties: { member_id:  { type: "string" } }, required: ["member_id"]  }), outputSchemaJson: null, businessOwner: "devon@example.com",  dataClassification: "internal",      sideEffectLevel: "READ_ONLY",  version: "v1", status: "ACTIVE", approvalStatus: "APPROVED", checksum: "sha256:memberlookupv1ghi",   createdBy: "platform-admin@example.com", createdAt: "2025-03-10T09:00:00Z", updatedAt: "2025-05-01T06:00:00Z" },
+  { id: "ltd-benefits-lookup", organizationId: "acme-health", toolKey: "benefits_lookup", displayName: "Benefits Lookup", description: "Look up benefits eligibility, coverage limits, and formulary details.",                                                 sourceType: "LAMBDA",      inputSchemaJson: JSON.stringify({ type: "object", properties: { member_id:  { type: "string" }, benefit_type: { type: "string" } }, required: ["member_id"] }), outputSchemaJson: null, businessOwner: "devon@example.com",  dataClassification: "internal",      sideEffectLevel: "READ_ONLY",  version: "v1", status: "ACTIVE", approvalStatus: "APPROVED", checksum: "sha256:benefitslookupv1jkl", createdBy: "platform-admin@example.com", createdAt: "2025-03-10T09:00:00Z", updatedAt: "2025-05-01T06:00:00Z" },
+  { id: "ltd-payment-post",    organizationId: "acme-health", toolKey: "payment_post",    displayName: "Payment Post",    description: "Post a payment transaction against an invoice. WRITE operation — modifies billing records and triggers payment gateway.", sourceType: "API_GATEWAY", inputSchemaJson: JSON.stringify({ type: "object", properties: { invoice_id: { type: "string" }, amount_cents: { type: "integer" }, payment_method_token: { type: "string" } }, required: ["invoice_id", "amount_cents", "payment_method_token"] }), outputSchemaJson: null, businessOwner: "marcus@example.com", dataClassification: "confidential", sideEffectLevel: "WRITE",      version: "v1", status: "ACTIVE", approvalStatus: "APPROVED", checksum: "sha256:paymentpostv121mno",  createdBy: "platform-admin@example.com", createdAt: "2025-04-01T09:00:00Z", updatedAt: "2025-05-01T06:00:00Z" },
+];
+
+// ── Seed Environment Tool Deployments ─────────────────────────────────────────
+// One per logical tool per environment. Holds all the env-specific physical bindings.
+const SEED_ENVIRONMENT_TOOL_DEPLOYMENTS = [
+  { id: "etd-claim-lookup-dev",    organizationId: "acme-health", logicalToolDefinitionId: "ltd-claim-lookup",    environmentId: "env-acme-health-dev", awsAccountConnectionId: "conn-acme-health-bu-001", sourceDiscoveredResourceId: null, gatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001", gatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp", gatewayTargetId: "tgt-claims-lookup",  mcpToolName: "claim_lookup",    sourceResourceArn: "arn:aws:lambda:us-east-1:555666777888:function/claims-lookup-fn",  sourceEndpoint: null, credentialProviderRef: null, toolInvocationRoleArn: "arn:aws:iam::555666777888:role/GuardianProvisioningRole", policySetId: null, deploymentStatus: "ACTIVE", schemaChecksum: "sha256:claimlookupv1abc",    lastValidatedAt: "2025-05-01T06:00:00Z", createdAt: "2025-03-01T09:00:00Z", updatedAt: "2025-05-01T06:00:00Z" },
+  { id: "etd-policy-lookup-dev",   organizationId: "acme-health", logicalToolDefinitionId: "ltd-policy-lookup",   environmentId: "env-acme-health-dev", awsAccountConnectionId: "conn-acme-health-bu-001", sourceDiscoveredResourceId: null, gatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001", gatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp", gatewayTargetId: "tgt-policy-lookup", mcpToolName: "policy_lookup",   sourceResourceArn: "arn:aws:lambda:us-east-1:555666777888:function/policy-lookup-fn",  sourceEndpoint: null, credentialProviderRef: null, toolInvocationRoleArn: "arn:aws:iam::555666777888:role/GuardianProvisioningRole", policySetId: null, deploymentStatus: "ACTIVE", schemaChecksum: "sha256:policylookupv1def",   lastValidatedAt: "2025-05-01T06:00:00Z", createdAt: "2025-03-01T09:00:00Z", updatedAt: "2025-05-01T06:00:00Z" },
+  { id: "etd-member-lookup-dev",   organizationId: "acme-health", logicalToolDefinitionId: "ltd-member-lookup",   environmentId: "env-acme-health-dev", awsAccountConnectionId: "conn-acme-health-bu-001", sourceDiscoveredResourceId: null, gatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001", gatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp", gatewayTargetId: "tgt-member-lookup", mcpToolName: "member_lookup",   sourceResourceArn: "arn:aws:lambda:us-east-1:555666777888:function/member-lookup-fn",  sourceEndpoint: null, credentialProviderRef: null, toolInvocationRoleArn: "arn:aws:iam::555666777888:role/GuardianProvisioningRole", policySetId: null, deploymentStatus: "ACTIVE", schemaChecksum: "sha256:memberlookupv1ghi",   lastValidatedAt: "2025-05-01T06:00:00Z", createdAt: "2025-03-10T09:00:00Z", updatedAt: "2025-05-01T06:00:00Z" },
+  { id: "etd-benefits-lookup-dev", organizationId: "acme-health", logicalToolDefinitionId: "ltd-benefits-lookup", environmentId: "env-acme-health-dev", awsAccountConnectionId: "conn-acme-health-bu-001", sourceDiscoveredResourceId: null, gatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001", gatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp", gatewayTargetId: "tgt-benefits-lookup", mcpToolName: "benefits_lookup", sourceResourceArn: "arn:aws:lambda:us-east-1:555666777888:function/benefits-lookup-fn", sourceEndpoint: null, credentialProviderRef: null, toolInvocationRoleArn: "arn:aws:iam::555666777888:role/GuardianProvisioningRole", policySetId: null, deploymentStatus: "ACTIVE", schemaChecksum: "sha256:benefitslookupv1jkl", lastValidatedAt: "2025-05-01T06:00:00Z", createdAt: "2025-03-10T09:00:00Z", updatedAt: "2025-05-01T06:00:00Z" },
+  { id: "etd-payment-post-dev",    organizationId: "acme-health", logicalToolDefinitionId: "ltd-payment-post",    environmentId: "env-acme-health-dev", awsAccountConnectionId: "conn-acme-health-bu-001", sourceDiscoveredResourceId: null, gatewayArn: "arn:aws:bedrock-agentcore:us-east-1:555666777888:gateway/gw-acme-health-prod-001", gatewayUrl: "https://gw-acme-health-prod-001.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp", gatewayTargetId: "tgt-payment-post",   mcpToolName: "payment_post",    sourceResourceArn: "arn:aws:apigateway:us-east-1::/restapis/billing-api",              sourceEndpoint: "https://billing-api-dev.acme-health.internal/v1/payments", credentialProviderRef: "sm/acme-health-billing-api-key", toolInvocationRoleArn: "arn:aws:iam::555666777888:role/GuardianProvisioningRole", policySetId: null, deploymentStatus: "ACTIVE", schemaChecksum: "sha256:paymentpostv121mno",  lastValidatedAt: "2025-05-01T06:00:00Z", createdAt: "2025-04-01T09:00:00Z", updatedAt: "2025-05-01T06:00:00Z" },
+];
+
+// ── Seed Project Tool Grants ──────────────────────────────────────────────────
+// Environment-specific project access to logical tools.
+const SEED_PROJECT_TOOL_GRANTS = [
+  { id: "ptg-claim-lookup-claims-dev",    organizationId: "acme-health", projectId: "claims-operations",  logicalToolDefinitionId: "ltd-claim-lookup",    environmentId: "env-acme-health-dev", grantStatus: "ACTIVE", approvedBy: "platform-admin@example.com", approvedAt: "2025-03-01T10:00:00Z", revokedBy: null, revokedAt: null, expiresAt: null, policyConstraintsJson: null, notes: "Seed grant.", createdAt: "2025-03-01T09:00:00Z", updatedAt: "2025-03-01T10:00:00Z" },
+  { id: "ptg-policy-lookup-claims-dev",   organizationId: "acme-health", projectId: "claims-operations",  logicalToolDefinitionId: "ltd-policy-lookup",   environmentId: "env-acme-health-dev", grantStatus: "ACTIVE", approvedBy: "platform-admin@example.com", approvedAt: "2025-03-01T10:00:00Z", revokedBy: null, revokedAt: null, expiresAt: null, policyConstraintsJson: null, notes: "Seed grant.", createdAt: "2025-03-01T09:00:00Z", updatedAt: "2025-03-01T10:00:00Z" },
+  { id: "ptg-member-lookup-members-dev",  organizationId: "acme-health", projectId: "member-services",    logicalToolDefinitionId: "ltd-member-lookup",   environmentId: "env-acme-health-dev", grantStatus: "ACTIVE", approvedBy: "platform-admin@example.com", approvedAt: "2025-03-10T10:00:00Z", revokedBy: null, revokedAt: null, expiresAt: null, policyConstraintsJson: null, notes: "Seed grant.", createdAt: "2025-03-10T09:00:00Z", updatedAt: "2025-03-10T10:00:00Z" },
+  { id: "ptg-benefits-lookup-members-dev",organizationId: "acme-health", projectId: "member-services",    logicalToolDefinitionId: "ltd-benefits-lookup", environmentId: "env-acme-health-dev", grantStatus: "ACTIVE", approvedBy: "platform-admin@example.com", approvedAt: "2025-03-10T10:00:00Z", revokedBy: null, revokedAt: null, expiresAt: null, policyConstraintsJson: null, notes: "Seed grant.", createdAt: "2025-03-10T09:00:00Z", updatedAt: "2025-03-10T10:00:00Z" },
+  { id: "ptg-payment-post-billing-dev",   organizationId: "acme-health", projectId: "billing-experience", logicalToolDefinitionId: "ltd-payment-post",    environmentId: "env-acme-health-dev", grantStatus: "ACTIVE", approvedBy: "platform-admin@example.com", approvedAt: "2025-04-01T10:00:00Z", revokedBy: null, revokedAt: null, expiresAt: null, policyConstraintsJson: null, notes: "Seed grant.", createdAt: "2025-04-01T09:00:00Z", updatedAt: "2025-04-01T10:00:00Z" },
+];
+
 // Seed project tools — these are the post-approval, post-provisioning canonical tool records
 const SEED_PROJECT_TOOLS = [
   {
@@ -845,6 +876,27 @@ function ensureRegistry() {
   // Seed project tools if empty
   if (registry.projectTools.length === 0) {
     registry.projectTools = SEED_PROJECT_TOOLS;
+  }
+  // Seed logical tool definitions if empty
+  if (registry.logicalToolDefinitions.length === 0) {
+    registry.logicalToolDefinitions = SEED_LOGICAL_TOOL_DEFINITIONS;
+  }
+  // Seed environment tool deployments if empty
+  if (registry.environmentToolDeployments.length === 0) {
+    registry.environmentToolDeployments = SEED_ENVIRONMENT_TOOL_DEPLOYMENTS;
+  }
+  // Seed project tool grants if empty
+  if (registry.projectToolGrants.length === 0) {
+    registry.projectToolGrants = SEED_PROJECT_TOOL_GRANTS;
+  }
+  // Backfill: link existing projectTools to their logicalToolDefinition where key matches
+  for (const pt of registry.projectTools) {
+    if (!pt.logicalToolDefinitionId) {
+      const ltd = (registry.logicalToolDefinitions || []).find(
+        (l) => l.organizationId === pt.organizationId && l.toolKey === pt.mcpToolName
+      );
+      if (ltd) pt.logicalToolDefinitionId = ltd.id;
+    }
   }
   fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2));
 }
@@ -2689,19 +2741,22 @@ async function handleApi(req, res, requestUrl) {
     const trr = (registry.toolRegistrationRequests || []).find((r) => r.id === parts[2]);
     if (!trr) return sendJson(res, 404, { error: "Tool registration request not found." });
     if (trr.approvalStatus !== "APPROVED") return sendJson(res, 422, { error: "Tool registration request must be fully approved before provisioning." });
-    const body = await readBody(req);
-    const conn = (registry.awsAccountConnections || []).find((c) => c.organizationId === trr.organizationId);
-    if (!conn) return sendJson(res, 422, { error: "No AWS account connection found for this organization." });
-    // Simulate provisioning
-    const gtdId = `gtd-${trr.id}-${Date.now()}`;
-    const targetId = `tgt-${slug(trr.requestedToolName)}-${Date.now()}`;
+    // Pick the connection: for org-scope use environmentId; for project-scope pick any conn for the org
+    const envId = trr.environmentId || null;
+    const conn = envId
+      ? (registry.awsAccountConnections || []).find((c) => c.organizationId === trr.organizationId && c.environmentId === envId)
+      : (registry.awsAccountConnections || []).find((c) => c.organizationId === trr.organizationId);
+    if (!conn) return sendJson(res, 422, { error: "No AWS account connection found for the target environment." });
     const gatewayArn = conn.agentCoreGatewayArn || `arn:aws:bedrock-agentcore:us-east-1:${conn.awsAccountId}:gateway/gw-auto`;
+    const targetId = `tgt-${slug(trr.requestedToolName)}-${Date.now()}`;
+    const gtdId = `gtd-${trr.id}-${Date.now()}`;
     const gtd = {
       id: gtdId,
       organizationId: trr.organizationId,
-      projectId: trr.projectId,
+      projectId: trr.projectId || null,
       toolRegistrationRequestId: trr.id,
       awsAccountConnectionId: conn.id,
+      environmentId: conn.environmentId || null,
       gatewayArn,
       gatewayId: gatewayArn.split("/").pop(),
       targetId,
@@ -2709,52 +2764,131 @@ async function handleApi(req, res, requestUrl) {
       deploymentStatus: "SUCCEEDED",
       deploymentLogsJson: JSON.stringify([
         `[${now()}] Assuming provisioning role ${conn.provisioningRoleArn}…`,
-        `[${now()}] STS AssumeRole succeeded. Session: guardian-provision-${trr.projectId}`,
+        `[${now()}] STS AssumeRole succeeded.`,
         `[${now()}] Creating AgentCore Gateway target for ${trr.requestedToolName} (type: ${trr.toolType})…`,
         `[${now()}] Gateway target created: ${targetId}`,
-        `[${now()}] Calling MCP tools/list to confirm tool registration…`,
         `[${now()}] MCP tools/list confirmed: tool name = "${trr.requestedToolName}", schema validated.`,
-        `[${now()}] ProjectTool record created. Provisioning complete.`,
       ]),
       createdAt: now(),
       completedAt: now(),
     };
     registry.gatewayTargetDeployments = registry.gatewayTargetDeployments || [];
     registry.gatewayTargetDeployments.push(gtd);
-    // Create ProjectTool
-    const ptId = `ptool-${slug(trr.requestedToolName)}-${Date.now()}`;
-    const projectTool = {
-      id: ptId,
-      organizationId: trr.organizationId,
-      projectId: trr.projectId,
-      toolRegistrationRequestId: trr.id,
-      sourceDiscoveredResourceId: trr.sourceDiscoveredResourceId,
-      gatewayArn,
-      gatewayUrl: conn.agentCoreGatewayUrl || "",
-      gatewayTargetId: targetId,
-      mcpToolName: trr.requestedToolName,
-      displayName: trr.requestedToolName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-      description: trr.requestedDescription,
-      inputSchemaJson: trr.inputSchemaJson,
-      outputSchemaJson: trr.outputSchemaJson,
-      sideEffectLevel: trr.sideEffectLevel,
-      dataClassification: trr.dataClassification,
-      riskTier: gtd.targetType === "BEDROCK_KB" ? "low" : trr.sideEffectLevel === "READ_ONLY" ? "medium" : "high",
-      businessOwner: trr.businessOwner,
-      toolStatus: "ACTIVE",
-      version: "1.0.0",
-      checksum: `sha256:${Buffer.from(`${trr.id}:${now()}`).toString("hex").slice(0, 32)}`,
-      lastValidatedAt: now(),
-      createdAt: now(),
-      updatedAt: now(),
-    };
-    registry.projectTools = registry.projectTools || [];
-    registry.projectTools.push(projectTool);
-    trr.approvalStatus = "PROVISIONED";
-    trr.updatedAt = now();
-    addAudit(registry, "tool.gateway.provisioned", { trrId: trr.id, projectId: trr.projectId, targetId, mcpToolName: trr.requestedToolName });
-    writeRegistry(registry);
-    return sendJson(res, 200, { gatewayTargetDeployment: gtd, projectTool });
+
+    if (trr.scope === "org") {
+      // ── Org-scoped: create LogicalToolDefinition + EnvironmentToolDeployment ──
+      // Check uniqueness: no duplicate toolKey per org
+      const existingLtd = (registry.logicalToolDefinitions || []).find(
+        (l) => l.organizationId === trr.organizationId && l.toolKey === trr.requestedToolName
+      );
+      let ltd = existingLtd;
+      if (!ltd) {
+        const ltdId = `ltd-${slug(trr.requestedToolName)}-${Date.now()}`;
+        ltd = {
+          id: ltdId,
+          organizationId: trr.organizationId,
+          toolKey: trr.requestedToolName,
+          displayName: trr.requestedToolName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+          description: trr.requestedDescription || "",
+          sourceType: trr.toolType,
+          inputSchemaJson: trr.inputSchemaJson,
+          outputSchemaJson: trr.outputSchemaJson,
+          businessOwner: trr.businessOwner,
+          dataClassification: trr.dataClassification,
+          sideEffectLevel: trr.sideEffectLevel,
+          version: "v1",
+          status: "ACTIVE",
+          approvalStatus: "APPROVED",
+          checksum: `sha256:${Buffer.from(`${trr.id}:${now()}`).toString("hex").slice(0, 32)}`,
+          createdBy: trr.requestedBy,
+          createdAt: now(),
+          updatedAt: now(),
+        };
+        registry.logicalToolDefinitions = registry.logicalToolDefinitions || [];
+        registry.logicalToolDefinitions.push(ltd);
+      }
+      // Check uniqueness: no duplicate ETD for same ltd+env
+      const existingEtd = (registry.environmentToolDeployments || []).find(
+        (e) => e.logicalToolDefinitionId === ltd.id && e.environmentId === (conn.environmentId || null)
+      );
+      if (existingEtd) {
+        trr.approvalStatus = "PROVISIONED";
+        trr.updatedAt = now();
+        addAudit(registry, "tool.org.provisioned.existing-etd", { trrId: trr.id, ltdId: ltd.id, etdId: existingEtd.id });
+        writeRegistry(registry);
+        return sendJson(res, 200, { gatewayTargetDeployment: gtd, logicalToolDefinition: ltd, environmentToolDeployment: existingEtd });
+      }
+      const etdId = `etd-${ltd.id}-${conn.environmentId || "default"}-${Date.now()}`;
+      const etd = {
+        id: etdId,
+        organizationId: trr.organizationId,
+        logicalToolDefinitionId: ltd.id,
+        environmentId: conn.environmentId || null,
+        awsAccountConnectionId: conn.id,
+        sourceDiscoveredResourceId: trr.sourceDiscoveredResourceId,
+        gatewayArn,
+        gatewayUrl: conn.agentCoreGatewayUrl || "",
+        gatewayTargetId: targetId,
+        mcpToolName: trr.requestedToolName,
+        sourceResourceArn: trr.sourceResourceArn || null,
+        sourceEndpoint: null,
+        credentialProviderRef: trr.authConfigRef || null,
+        toolInvocationRoleArn: conn.provisioningRoleArn || null,
+        policySetId: null,
+        deploymentStatus: "ACTIVE",
+        schemaChecksum: ltd.checksum,
+        lastValidatedAt: now(),
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      registry.environmentToolDeployments = registry.environmentToolDeployments || [];
+      registry.environmentToolDeployments.push(etd);
+      trr.approvalStatus = "PROVISIONED";
+      trr.updatedAt = now();
+      addAudit(registry, "tool.org.provisioned", { trrId: trr.id, ltdId: ltd.id, etdId, mcpToolName: trr.requestedToolName });
+      writeRegistry(registry);
+      return sendJson(res, 200, { gatewayTargetDeployment: gtd, logicalToolDefinition: ltd, environmentToolDeployment: etd });
+    } else {
+      // ── Project-scoped (legacy): create ProjectTool ───────────────────────────
+      const ptId = `ptool-${slug(trr.requestedToolName)}-${Date.now()}`;
+      // Find matching LTD to back-link (may not exist for legacy project TRRs)
+      const linkedLtd = (registry.logicalToolDefinitions || []).find(
+        (l) => l.organizationId === trr.organizationId && l.toolKey === trr.requestedToolName
+      );
+      const projectTool = {
+        id: ptId,
+        organizationId: trr.organizationId,
+        projectId: trr.projectId,
+        logicalToolDefinitionId: linkedLtd?.id || null,
+        toolRegistrationRequestId: trr.id,
+        sourceDiscoveredResourceId: trr.sourceDiscoveredResourceId,
+        gatewayArn,
+        gatewayUrl: conn.agentCoreGatewayUrl || "",
+        gatewayTargetId: targetId,
+        mcpToolName: trr.requestedToolName,
+        displayName: trr.requestedToolName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        description: trr.requestedDescription,
+        inputSchemaJson: trr.inputSchemaJson,
+        outputSchemaJson: trr.outputSchemaJson,
+        sideEffectLevel: trr.sideEffectLevel,
+        dataClassification: trr.dataClassification,
+        riskTier: trr.toolType === "BEDROCK_KB" ? "low" : trr.sideEffectLevel === "READ_ONLY" ? "medium" : "high",
+        businessOwner: trr.businessOwner,
+        toolStatus: "ACTIVE",
+        version: "1.0.0",
+        checksum: `sha256:${Buffer.from(`${trr.id}:${now()}`).toString("hex").slice(0, 32)}`,
+        lastValidatedAt: now(),
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      registry.projectTools = registry.projectTools || [];
+      registry.projectTools.push(projectTool);
+      trr.approvalStatus = "PROVISIONED";
+      trr.updatedAt = now();
+      addAudit(registry, "tool.gateway.provisioned", { trrId: trr.id, projectId: trr.projectId, targetId, mcpToolName: trr.requestedToolName });
+      writeRegistry(registry);
+      return sendJson(res, 200, { gatewayTargetDeployment: gtd, projectTool });
+    }
   }
 
   // GET /api/tool-registration-requests/:trrId/provisioning-status
@@ -2766,13 +2900,60 @@ async function handleApi(req, res, requestUrl) {
 
   // ── Project Tools (approved, gateway-backed) ────────────────────────────────
 
-  // GET /api/projects/:pid/project-tools
+  // GET /api/projects/:pid/project-tools?environmentId=&status=
+  // Returns a merged view: direct projectTools + org tools granted to this project via ProjectToolGrant
   if (req.method === "GET" && parts[1] === "projects" && parts[3] === "project-tools" && !parts[4]) {
     const registry = readRegistry();
-    const { status: toolStatus } = Object.fromEntries(requestUrl.searchParams);
-    let tools2 = (registry.projectTools || []).filter((t) => t.projectId === parts[2]);
-    if (toolStatus) tools2 = tools2.filter((t) => t.toolStatus === toolStatus);
-    return sendJson(res, 200, { projectTools: tools2 });
+    const { status: toolStatus, environmentId: filterEnvId } = Object.fromEntries(requestUrl.searchParams);
+    // 1. Direct project tools (legacy / project-scoped)
+    let direct = (registry.projectTools || []).filter((t) => t.projectId === parts[2]);
+    if (toolStatus) direct = direct.filter((t) => t.toolStatus === toolStatus);
+    // 2. Org-level tools granted to this project via ProjectToolGrant → EnvironmentToolDeployment
+    const grants = (registry.projectToolGrants || []).filter(
+      (g) => g.projectId === parts[2] && g.grantStatus === "ACTIVE"
+        && (!filterEnvId || g.environmentId === filterEnvId)
+    );
+    const grantedTools = grants.map((grant) => {
+      const ltd = (registry.logicalToolDefinitions || []).find((l) => l.id === grant.logicalToolDefinitionId);
+      const etd = (registry.environmentToolDeployments || []).find(
+        (e) => e.logicalToolDefinitionId === grant.logicalToolDefinitionId && e.environmentId === grant.environmentId
+      );
+      if (!ltd || !etd) return null;
+      if (toolStatus && etd.deploymentStatus !== toolStatus) return null;
+      // Project the ETD into the same shape as projectTool so the UI works unchanged
+      return {
+        id: `grant:${grant.id}`,
+        organizationId: grant.organizationId,
+        projectId: grant.projectId,
+        logicalToolDefinitionId: ltd.id,
+        grantId: grant.id,
+        environmentId: grant.environmentId,
+        sourceType: "ORG_TOOL_GRANT",
+        gatewayArn: etd.gatewayArn,
+        gatewayUrl: etd.gatewayUrl,
+        gatewayTargetId: etd.gatewayTargetId,
+        mcpToolName: etd.mcpToolName,
+        displayName: ltd.displayName,
+        description: ltd.description,
+        inputSchemaJson: ltd.inputSchemaJson,
+        outputSchemaJson: ltd.outputSchemaJson,
+        sideEffectLevel: ltd.sideEffectLevel,
+        dataClassification: ltd.dataClassification,
+        riskTier: ltd.sideEffectLevel === "READ_ONLY" ? "medium" : "high",
+        businessOwner: ltd.businessOwner,
+        toolStatus: etd.deploymentStatus === "ACTIVE" ? "ACTIVE" : etd.deploymentStatus,
+        version: ltd.version,
+        checksum: etd.schemaChecksum,
+        lastValidatedAt: etd.lastValidatedAt,
+        createdAt: grant.createdAt,
+        updatedAt: grant.updatedAt,
+        // Extra fields for UI differentiation
+        _grantedAt: grant.approvedAt,
+        _etdId: etd.id,
+        _envName: (registry.organizationEnvironments || []).find((e) => e.id === grant.environmentId)?.name || null,
+      };
+    }).filter(Boolean);
+    return sendJson(res, 200, { projectTools: [...direct, ...grantedTools], orgToolGrants: grantedTools });
   }
 
   // GET /api/project-tools/:toolId
@@ -2781,6 +2962,305 @@ async function handleApi(req, res, requestUrl) {
     const tool = (registry.projectTools || []).find((t) => t.id === parts[2]);
     if (!tool) return sendJson(res, 404, { error: "Project tool not found." });
     return sendJson(res, 200, { projectTool: tool });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // PHASE 4 — Logical Tool Definitions & Environment Tool Deployments
+  // ══════════════════════════════════════════════════════════════════════════════
+
+  // GET /api/organizations/:orgId/logical-tools
+  if (req.method === "GET" && parts[1] === "organizations" && parts[2] && parts[3] === "logical-tools" && !parts[4]) {
+    const registry = readRegistry();
+    const { status, sourceType } = Object.fromEntries(requestUrl.searchParams);
+    let ltds = (registry.logicalToolDefinitions || []).filter((l) => l.organizationId === parts[2]);
+    if (status) ltds = ltds.filter((l) => l.status === status);
+    if (sourceType) ltds = ltds.filter((l) => l.sourceType === sourceType);
+    // Enrich with per-environment deployment status and grant count
+    const enriched = ltds.map((ltd) => {
+      const etds = (registry.environmentToolDeployments || []).filter((e) => e.logicalToolDefinitionId === ltd.id);
+      const grantCount = (registry.projectToolGrants || []).filter((g) => g.logicalToolDefinitionId === ltd.id && g.grantStatus === "ACTIVE").length;
+      const envSummary = etds.map((e) => {
+        const env = (registry.organizationEnvironments || []).find((ev) => ev.id === e.environmentId);
+        return { environmentId: e.environmentId, environmentName: env?.name || null, deploymentStatus: e.deploymentStatus, etdId: e.id };
+      });
+      return { ...ltd, environmentDeployments: envSummary, activeGrantCount: grantCount };
+    });
+    return sendJson(res, 200, { logicalToolDefinitions: enriched });
+  }
+
+  // POST /api/organizations/:orgId/logical-tools — register a new org-level logical tool definition
+  // This creates an org-scoped TRR for approval; provisioning happens via /provision after approval.
+  if (req.method === "POST" && parts[1] === "organizations" && parts[2] && parts[3] === "logical-tools" && !parts[4]) {
+    const registry = readRegistry();
+    const org = (registry.organizations || []).find((o) => o.id === parts[2]);
+    if (!org) return sendJson(res, 404, { error: "Organization not found." });
+    const body = await readBody(req);
+    if (!body.toolKey || !/^[a-z][a-z0-9_]*$/.test(body.toolKey)) return sendJson(res, 400, { error: "toolKey must be snake_case starting with a letter (e.g. claim_lookup)." });
+    if (!body.sourceType || !["API_GATEWAY","LAMBDA","BEDROCK_KB","MCP","EXISTING_GATEWAY_TOOL"].includes(body.sourceType)) return sendJson(res, 400, { error: "sourceType must be API_GATEWAY, LAMBDA, BEDROCK_KB, MCP, or EXISTING_GATEWAY_TOOL." });
+    if (!body.sideEffectLevel || !["READ_ONLY","WRITE","DESTRUCTIVE"].includes(body.sideEffectLevel)) return sendJson(res, 400, { error: "sideEffectLevel must be READ_ONLY, WRITE, or DESTRUCTIVE." });
+    if (!body.businessOwner) return sendJson(res, 400, { error: "businessOwner is required." });
+    if (/AKIA|BEGIN|password|token[-_]?value/i.test(body.credentialProviderRef || "")) return sendJson(res, 400, { error: "credentialProviderRef must be a secret reference name, never a raw value." });
+    if (body.inputSchemaJson) { try { JSON.parse(body.inputSchemaJson); } catch { return sendJson(res, 400, { error: "inputSchemaJson is not valid JSON." }); } }
+    // Uniqueness: toolKey per org
+    const existing = (registry.logicalToolDefinitions || []).find((l) => l.organizationId === parts[2] && l.toolKey === body.toolKey);
+    if (existing) return sendJson(res, 409, { error: `Logical tool '${body.toolKey}' already registered for this organization. Use PATCH to update or register an EnvironmentToolDeployment instead.` });
+    // Create a DRAFT logical tool definition (becomes ACTIVE after provisioning)
+    const ltdId = `ltd-${slug(body.toolKey)}-${Date.now()}`;
+    const schemaChecksum = body.inputSchemaJson
+      ? `sha256:${Buffer.from(body.inputSchemaJson).toString("hex").slice(0, 32)}`
+      : null;
+    const ltd = {
+      id: ltdId,
+      organizationId: parts[2],
+      toolKey: body.toolKey,
+      displayName: body.displayName || body.toolKey.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      description: (body.description || "").trim(),
+      sourceType: body.sourceType,
+      inputSchemaJson: body.inputSchemaJson || null,
+      outputSchemaJson: body.outputSchemaJson || null,
+      businessOwner: body.businessOwner.trim(),
+      dataClassification: body.dataClassification || "internal",
+      sideEffectLevel: body.sideEffectLevel,
+      version: "v1",
+      status: "DRAFT",
+      approvalStatus: "PENDING_APPROVAL",
+      checksum: schemaChecksum,
+      createdBy: body.createdBy || "current-user@example.com",
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    registry.logicalToolDefinitions = registry.logicalToolDefinitions || [];
+    registry.logicalToolDefinitions.push(ltd);
+    // Create an org-scoped TRR so it goes through approval
+    const trrId = `trr-org-${slug(body.toolKey)}-${Date.now()}`;
+    const trr = {
+      id: trrId,
+      organizationId: parts[2],
+      projectId: null,
+      scope: "org",
+      environmentId: body.environmentId || null,
+      logicalToolDefinitionId: ltdId,
+      sourceDiscoveredResourceId: body.sourceDiscoveredResourceId || null,
+      sourceResourceArn: body.sourceResourceArn || null,
+      sourceResourceType: body.sourceType,
+      requestedToolName: body.toolKey,
+      requestedDescription: ltd.description,
+      toolType: body.sourceType,
+      inputSchemaJson: body.inputSchemaJson || null,
+      outputSchemaJson: body.outputSchemaJson || null,
+      authConfigRef: body.credentialProviderRef || null,
+      dataClassification: ltd.dataClassification,
+      sideEffectLevel: body.sideEffectLevel,
+      businessOwner: body.businessOwner.trim(),
+      approvalStatus: "PENDING_APPROVAL",
+      validationStatus: "passed",
+      validationResultsJson: JSON.stringify([
+        { check: "tool_key_unique", status: "pass", message: `toolKey '${body.toolKey}' is unique within organization.` },
+        { check: "no_raw_secrets", status: "pass", message: "No raw credential values detected." },
+        { check: "side_effect_declared", status: "pass", message: `Side effect level declared: ${body.sideEffectLevel}.` },
+        ...(body.sideEffectLevel !== "READ_ONLY" ? [{ check: "write_risk", status: "warn", message: `${body.sideEffectLevel} operation requires elevated approval.` }] : []),
+      ]),
+      requestedBy: body.createdBy || "current-user@example.com",
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    registry.toolRegistrationRequests = registry.toolRegistrationRequests || [];
+    registry.toolRegistrationRequests.push(trr);
+    // Approval tasks: org_admin + platform_admin (+ security for WRITE/DESTRUCTIVE)
+    const approverTypes = ["org_admin", "platform_admin"];
+    if (body.sideEffectLevel === "WRITE" || body.sideEffectLevel === "DESTRUCTIVE") approverTypes.push("security");
+    const trrTasks = approverTypes.map((type) => ({
+      id: `approval-trr-${trrId}-${type}-${Date.now()}`,
+      taskCategory: "tool_registration",
+      toolRegistrationRequestId: trrId,
+      projectId: null,
+      organizationId: parts[2],
+      resourceName: body.toolKey,
+      sourceResourceType: body.sourceType,
+      sideEffectLevel: body.sideEffectLevel,
+      approverType: type,
+      status: "pending",
+      riskTier: body.sideEffectLevel === "DESTRUCTIVE" ? "critical" : body.sideEffectLevel === "WRITE" ? "high" : "medium",
+      reason: reasonFor(type),
+      createdAt: now(),
+      decidedAt: null,
+      decision: null,
+      comments: "",
+      approver: null,
+    }));
+    registry.approvalTasks.push(...trrTasks);
+    addAudit(registry, "tool.logical.registration.requested", { ltdId, orgId: parts[2], toolKey: body.toolKey });
+    writeRegistry(registry);
+    return sendJson(res, 201, { logicalToolDefinition: ltd, toolRegistrationRequest: trr, approvalTasks: trrTasks });
+  }
+
+  // GET /api/logical-tools/:ltdId
+  if (req.method === "GET" && parts[1] === "logical-tools" && parts[2] && !parts[3]) {
+    const registry = readRegistry();
+    const ltd = (registry.logicalToolDefinitions || []).find((l) => l.id === parts[2]);
+    if (!ltd) return sendJson(res, 404, { error: "Logical tool definition not found." });
+    const etds = (registry.environmentToolDeployments || []).filter((e) => e.logicalToolDefinitionId === parts[2]);
+    const grants = (registry.projectToolGrants || []).filter((g) => g.logicalToolDefinitionId === parts[2] && g.grantStatus === "ACTIVE");
+    const enrichedEtds = etds.map((e) => {
+      const env = (registry.organizationEnvironments || []).find((ev) => ev.id === e.environmentId);
+      return { ...e, environmentName: env?.name || null };
+    });
+    return sendJson(res, 200, { logicalToolDefinition: ltd, environmentDeployments: enrichedEtds, activeGrantCount: grants.length });
+  }
+
+  // PATCH /api/logical-tools/:ltdId
+  if (req.method === "PATCH" && parts[1] === "logical-tools" && parts[2] && !parts[3]) {
+    const registry = readRegistry();
+    const ltd = (registry.logicalToolDefinitions || []).find((l) => l.id === parts[2]);
+    if (!ltd) return sendJson(res, 404, { error: "Logical tool definition not found." });
+    const body = await readBody(req);
+    if (body.displayName !== undefined) ltd.displayName = body.displayName;
+    if (body.description !== undefined) ltd.description = body.description;
+    if (body.businessOwner !== undefined) ltd.businessOwner = body.businessOwner;
+    if (body.status !== undefined) {
+      const validStatuses = ["DRAFT","ACTIVE","DEPRECATED","REMOVED"];
+      if (!validStatuses.includes(body.status)) return sendJson(res, 400, { error: `status must be one of: ${validStatuses.join(", ")}` });
+      // If removing, suspend all active grants
+      if (body.status === "REMOVED") {
+        for (const g of (registry.projectToolGrants || []).filter((g) => g.logicalToolDefinitionId === parts[2] && g.grantStatus === "ACTIVE")) {
+          g.grantStatus = "SUSPENDED";
+          g.updatedAt = now();
+        }
+      }
+      ltd.status = body.status;
+    }
+    // Schema update bumps version and marks ETDs as STALE
+    if (body.inputSchemaJson !== undefined) {
+      if (body.inputSchemaJson) { try { JSON.parse(body.inputSchemaJson); } catch { return sendJson(res, 400, { error: "inputSchemaJson is not valid JSON." }); } }
+      const oldVersion = parseInt((ltd.version || "v1").replace("v", ""), 10) || 1;
+      ltd.version = `v${oldVersion + 1}`;
+      ltd.inputSchemaJson = body.inputSchemaJson;
+      ltd.checksum = body.inputSchemaJson ? `sha256:${Buffer.from(body.inputSchemaJson).toString("hex").slice(0, 32)}` : null;
+      // Mark all active ETDs as STALE so they require re-validation
+      for (const etd of (registry.environmentToolDeployments || []).filter((e) => e.logicalToolDefinitionId === parts[2] && e.deploymentStatus === "ACTIVE")) {
+        etd.deploymentStatus = "STALE";
+        etd.updatedAt = now();
+      }
+      addAudit(registry, "tool.logical.schema.updated", { ltdId: parts[2], newVersion: ltd.version });
+    }
+    ltd.updatedAt = now();
+    addAudit(registry, "tool.logical.updated", { ltdId: parts[2], orgId: ltd.organizationId });
+    writeRegistry(registry);
+    return sendJson(res, 200, { logicalToolDefinition: ltd });
+  }
+
+  // ── Environment Tool Deployments ────────────────────────────────────────────
+
+  // GET /api/organizations/:orgId/logical-tools/:ltdId/env-deployments
+  if (req.method === "GET" && parts[1] === "organizations" && parts[2] && parts[3] === "logical-tools" && parts[4] && parts[5] === "env-deployments") {
+    const registry = readRegistry();
+    const etds = (registry.environmentToolDeployments || []).filter(
+      (e) => e.logicalToolDefinitionId === parts[4] && e.organizationId === parts[2]
+    );
+    const enriched = etds.map((e) => {
+      const env = (registry.organizationEnvironments || []).find((ev) => ev.id === e.environmentId);
+      return { ...e, environmentName: env?.name || null, isProduction: env?.isProduction ?? false };
+    });
+    return sendJson(res, 200, { environmentToolDeployments: enriched });
+  }
+
+  // POST /api/organizations/:orgId/logical-tools/:ltdId/env-deployments — deploy to a specific env
+  if (req.method === "POST" && parts[1] === "organizations" && parts[2] && parts[3] === "logical-tools" && parts[4] && parts[5] === "env-deployments") {
+    const registry = readRegistry();
+    const ltd = (registry.logicalToolDefinitions || []).find((l) => l.id === parts[4] && l.organizationId === parts[2]);
+    if (!ltd) return sendJson(res, 404, { error: "Logical tool definition not found." });
+    const body = await readBody(req);
+    if (!body.environmentId) return sendJson(res, 400, { error: "environmentId is required." });
+    if (!body.awsAccountConnectionId) return sendJson(res, 400, { error: "awsAccountConnectionId is required." });
+    // Validate env belongs to org
+    const env = (registry.organizationEnvironments || []).find((e) => e.id === body.environmentId && e.organizationId === parts[2]);
+    if (!env) return sendJson(res, 400, { error: "environmentId not found in this organization." });
+    // Validate connection belongs to org and matches environment
+    const conn = (registry.awsAccountConnections || []).find((c) => c.id === body.awsAccountConnectionId && c.organizationId === parts[2]);
+    if (!conn) return sendJson(res, 400, { error: "awsAccountConnectionId not found in this organization." });
+    if (conn.environmentId && conn.environmentId !== body.environmentId) {
+      return sendJson(res, 400, { error: `Account connection is linked to environment '${conn.environmentType}', not the target environment. Use a connection for the correct environment.` });
+    }
+    // Uniqueness: one ETD per ltd+env
+    const existing = (registry.environmentToolDeployments || []).find(
+      (e) => e.logicalToolDefinitionId === parts[4] && e.environmentId === body.environmentId
+    );
+    if (existing) return sendJson(res, 409, { error: `Tool '${ltd.toolKey}' already has an environment deployment in that environment (${existing.id}). Use PATCH to update or validate it.` });
+    // Cross-account ARN safety check: source resource ARN must belong to the connection's account
+    if (body.sourceResourceArn) {
+      const arnAccount = (body.sourceResourceArn.split(":")[4] || "").trim();
+      if (arnAccount && arnAccount !== conn.awsAccountId) {
+        return sendJson(res, 400, { error: `sourceResourceArn account (${arnAccount}) does not match connection account (${conn.awsAccountId}). Do not use ${env.name === "PROD" ? "non-PROD" : "wrong-account"} ARNs in this environment.` });
+      }
+    }
+    if (/AKIA|BEGIN|password|token[-_]?value/i.test(body.credentialProviderRef || "")) {
+      return sendJson(res, 400, { error: "credentialProviderRef must be a secret reference name, never a raw value." });
+    }
+    const erm = (registry.environmentRuntimeMappings || []).find((m) => m.organizationId === parts[2] && m.environmentId === body.environmentId);
+    const etdId = `etd-${parts[4]}-${slug(body.environmentId)}-${Date.now()}`;
+    const etd = {
+      id: etdId,
+      organizationId: parts[2],
+      logicalToolDefinitionId: parts[4],
+      environmentId: body.environmentId,
+      awsAccountConnectionId: body.awsAccountConnectionId,
+      sourceDiscoveredResourceId: body.sourceDiscoveredResourceId || null,
+      gatewayArn: body.gatewayArn || erm?.agentCoreGatewayArn || null,
+      gatewayUrl: body.gatewayUrl || erm?.agentCoreGatewayUrl || null,
+      gatewayTargetId: body.gatewayTargetId || null,
+      mcpToolName: body.mcpToolName || ltd.toolKey,
+      sourceResourceArn: body.sourceResourceArn || null,
+      sourceEndpoint: body.sourceEndpoint || null,
+      credentialProviderRef: body.credentialProviderRef || null,
+      toolInvocationRoleArn: body.toolInvocationRoleArn || conn.deploymentRoleArn || null,
+      policySetId: body.policySetId || null,
+      deploymentStatus: "NOT_DEPLOYED",
+      schemaChecksum: null,
+      lastValidatedAt: null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    registry.environmentToolDeployments = registry.environmentToolDeployments || [];
+    registry.environmentToolDeployments.push(etd);
+    addAudit(registry, "tool.env-deployment.created", { etdId, ltdId: parts[4], orgId: parts[2], envId: body.environmentId });
+    writeRegistry(registry);
+    return sendJson(res, 201, { environmentToolDeployment: { ...etd, environmentName: env.name, isProduction: env.isProduction } });
+  }
+
+  // GET /api/env-tool-deployments/:etdId
+  if (req.method === "GET" && parts[1] === "env-tool-deployments" && parts[2] && !parts[3]) {
+    const registry = readRegistry();
+    const etd = (registry.environmentToolDeployments || []).find((e) => e.id === parts[2]);
+    if (!etd) return sendJson(res, 404, { error: "Environment tool deployment not found." });
+    const ltd = (registry.logicalToolDefinitions || []).find((l) => l.id === etd.logicalToolDefinitionId);
+    const env = (registry.organizationEnvironments || []).find((e) => e.id === etd.environmentId);
+    return sendJson(res, 200, { environmentToolDeployment: { ...etd, environmentName: env?.name || null, isProduction: env?.isProduction ?? false }, logicalToolDefinition: ltd || null });
+  }
+
+  // PATCH /api/env-tool-deployments/:etdId/validate — re-validate schema against MCP tools/list (simulated)
+  if (req.method === "PATCH" && parts[1] === "env-tool-deployments" && parts[2] && parts[3] === "validate") {
+    const registry = readRegistry();
+    const etd = (registry.environmentToolDeployments || []).find((e) => e.id === parts[2]);
+    if (!etd) return sendJson(res, 404, { error: "Environment tool deployment not found." });
+    const ltd = (registry.logicalToolDefinitions || []).find((l) => l.id === etd.logicalToolDefinitionId);
+    if (!ltd) return sendJson(res, 404, { error: "Parent logical tool definition not found." });
+    const body = await readBody(req);
+    // Accept a new schemaChecksum from the caller (real impl would call MCP tools/list)
+    const incomingChecksum = body.schemaChecksum || ltd.checksum;
+    const schemaDrifted = incomingChecksum && ltd.checksum && incomingChecksum !== ltd.checksum;
+    etd.schemaChecksum = incomingChecksum;
+    etd.lastValidatedAt = now();
+    etd.deploymentStatus = schemaDrifted ? "DRIFT_DETECTED" : "ACTIVE";
+    etd.updatedAt = now();
+    addAudit(registry, "tool.env-deployment.validated", { etdId: parts[2], deploymentStatus: etd.deploymentStatus, drift: schemaDrifted });
+    writeRegistry(registry);
+    return sendJson(res, 200, {
+      environmentToolDeployment: etd,
+      driftDetected: schemaDrifted,
+      message: schemaDrifted
+        ? `Schema mismatch detected. Expected checksum: ${ltd.checksum}, got: ${incomingChecksum}. Marked DRIFT_DETECTED.`
+        : "Schema validated. No drift detected. Status set to ACTIVE.",
+    });
   }
 
   return sendJson(res, 404, { error: "API route not found." });
