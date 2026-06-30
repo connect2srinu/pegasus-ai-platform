@@ -29,15 +29,16 @@ Top-level navigation should be dense and operational:
 
 Users should always have a project switcher in the header. Switching projects changes visible agents, tools, knowledge bases, secrets, runs, and role capabilities.
 
-## Project Roles
+## Project Roles (As Implemented)
 
-| Role | Capabilities |
+| Role (stored in `org_members.role`) | Capabilities |
 | --- | --- |
-| Project owner | Manage users, approve project agents, attach KBs/tools, manage project settings, create secrets |
-| Project writer | Create and submit agents, request tool/KB attachment, run approved agents |
-| Project reader | View project agents, tools, KBs, approvals, and runs |
-| Business user | Run approved agents and view own run history |
-| Platform admin | Global approval, deployment, policy, runtime, and catalog administration |
+| `ORG_ADMIN` | Manage org, approve tools, deploy to gateway, grant tools to projects, manage members |
+| `PROJECT_ADMIN` | Manage project members, grant tools, publish and deploy agents within project |
+| `MEMBER` | Author agents, view project tools and agents |
+| `VIEWER` | Read-only access to project resources |
+
+> Aspirational roles from design docs (Project owner / Project writer / Business user / Auditor) map onto this four-tier model. The `approver_type` field on `agent_approval_requests` (`business_owner` | `platform_admin`) is independent of the org membership role.
 
 ## Core Workflows
 
@@ -49,23 +50,34 @@ Users should always have a project switcher in the header. Switching projects ch
 4. Default policy template is selected.
 5. Allowed runtimes, tools, memory modes, and KB attachment rules are configured.
 
-### Register Agent
+### Register Agent (As Implemented)
 
-1. Agent developer chooses project and agent type.
-2. User submits a portable agent specification.
-3. Guardian validates schema, ownership, tools, KBs, memory, secrets, runtime, and risk.
-4. Valid agent enters review.
-5. Project owner approves business fit.
-6. Platform admin approves platform/security fit.
-7. Agent becomes eligible for deployment.
+1. Agent author opens the **Author Wizard** (6 steps):
+   - Step 1 — Template: choose agent template
+   - Step 2 — Prompt: enter name and system prompt (both required before Next is enabled)
+   - Step 3 — Tools: select from tools with active project grants (`GET /api/projects/:id/project-tools`)
+   - Step 4 — Config: choose model, set `risk_tier` (low / medium / high / critical)
+   - Step 5 — Deploy: generate Strands Python code preview + manifest YAML
+   - Step 6 — Review: health check against `/health`, then Submit
+2. Submit calls `POST /api/agents/publish` → agent created with `status = SUBMITTED`.
+3. Two `agent_approval_requests` rows auto-created: `approver_type = business_owner` and `approver_type = platform_admin`.
+4. Approvers act via `POST /api/approvals/:taskId/decision` with `{ decision: "approve" | "reject", comments }`.
+5. When **both** rows are approved → agent transitions to `status = APPROVED`.
+6. If **either** is rejected → agent transitions to `status = REJECTED` immediately.
+7. Agent is now eligible for deployment.
 
-### Deploy Agent
+> Note: there is no automated schema validation step in the current implementation. Validation is via the form UI only.
 
-1. Authorized user selects an approved agent version.
-2. Deployment service provisions AgentCore Runtime and AgentCore Gateway mappings.
-3. Guardian publishes runtime policy snapshot.
-4. Deployment status is stored in the registry.
-5. Agent becomes runnable in the project workspace.
+### Deploy Agent (As Implemented)
+
+1. Authorized user clicks Deploy on an `APPROVED` agent (deploy blocked otherwise).
+2. `POST /api/projects/:projectId/agents/:agentId/deploy` called.
+3. Server generates Strands Python `agent.py` via `strands-generator.cjs`.
+4. `agent.py` uploaded to S3 at `agents/{id}/{version}/agent.py`.
+5. `CreateAgentRuntime` called with `codeConfiguration.s3`; server polls until `status = READY` (≈3 min).
+6. `CreateAgentRuntimeEndpoint` called with `networkMode = PUBLIC`; server polls until `status = READY`.
+7. `agent_environment_deployments` row updated: `deployment_status = DEPLOYED`, `agent_core_endpoint_id`, `agent_core_endpoint_arn`, `s3_code_location`.
+8. Agent can now be invoked via `InvokeAgentRuntimeCommand`.
 
 ### Run Agent
 

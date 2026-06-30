@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER:     guardian
+      POSTGRES_PASSWORD: guardian
+      POSTGRES_DB:       guardian_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - guardian_pgdata:/var/lib/postgresql/data
+      - ./backend/runtime/db/schema-postgres.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U guardian -d guardian_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  guardian_pgdata:

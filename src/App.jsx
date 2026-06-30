@@ -15,7 +15,7 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { PROJECTS, PLATFORM_NAME, PLATFORM_MARK, FALLBACK_ORGS, ORG_PROJECTS } from "./constants.js";
+import { PLATFORM_NAME, PLATFORM_MARK, FALLBACK_ORGS } from "./constants.js";
 import { api, projectId, normalizeAgent } from "./utils.js";
 import { PlaneTabs, ApiBanner } from "./components/shared/index.jsx";
 import Workspace from "./components/control-plane/Workspace.jsx";
@@ -43,7 +43,8 @@ export default function App() {
   const [orgScreen, setOrgScreen] = useState(null); // null | "orgList" | "orgDetail" | "createOrg" | "createProject"
 
   // Project state
-  const [project, setProject] = useState(PROJECTS[0]);
+  // project is now a full object { id, name, organizationId } or null
+  const [project, setProject] = useState(null);
   const [plane, setPlane] = useState("control");
   const [screen, setScreen] = useState("workspace");
   const [agentsByProject, setAgentsByProject] = useState({});
@@ -52,20 +53,24 @@ export default function App() {
   const [knowledgeByProject, setKnowledgeByProject] = useState({});
   const [apiStatus, setApiStatus] = useState("loading");
   const [apiMessage, setApiMessage] = useState("Connecting to Control Plane API");
-  const [selectedAgentId, setSelectedAgentId] = useState("claims-assistant");
-  const [selectedRunId, setSelectedRunId] = useState("run-claims-001");
+  const [selectedAgentId, setSelectedAgentId] = useState(null);
+  const [selectedRunId, setSelectedRunId] = useState(null);
 
-  const agents = useMemo(() => (agentsByProject[project] || []).map(normalizeAgent), [agentsByProject, project]);
-  const approvalTasks = approvalTasksByProject[project] || [];
-  const tools = toolsByProject[project] || [];
-  const knowledge = knowledgeByProject[project] || [];
+  const pid = projectId(project);
+  const agents = useMemo(() => (agentsByProject[pid] || []).map(normalizeAgent), [agentsByProject, pid]);
+  const approvalTasks = approvalTasksByProject[pid] || [];
+  const tools = toolsByProject[pid] || [];
+  const knowledge = knowledgeByProject[pid] || [];
   const selectedAgent = agents.find((a) => a.id === selectedAgentId) || agents[0];
 
-  // Projects available in the selected org (or all if no org chosen)
-  const orgProjectNames = selectedOrg
-    ? (selectedOrg.projects || []).map((p) => p.name).filter((n) => PROJECTS.includes(n))
-    : PROJECTS;
-  const visibleProjects = orgProjectNames.length > 0 ? orgProjectNames : PROJECTS;
+  // Projects available in the selected org, as full objects with id + name
+  const visibleProjects = selectedOrg
+    ? (selectedOrg.projects || []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        organizationId: selectedOrg.id,
+      }))
+    : [];
 
   async function refreshOrgs() {
     try {
@@ -85,9 +90,11 @@ export default function App() {
   }
 
   async function refreshAgents(target = project) {
+    const id = projectId(target);
+    if (!id) return;
     try {
-      const payload = await api(`/api/projects/${projectId(target)}/agents`);
-      setAgentsByProject((prev) => ({ ...prev, [target]: payload.agents || [] }));
+      const payload = await api(`/api/projects/${id}/agents`);
+      setAgentsByProject((prev) => ({ ...prev, [id]: payload.agents || [] }));
       setApiStatus("connected");
       setApiMessage("Control Plane API connected");
     } catch (err) {
@@ -97,9 +104,11 @@ export default function App() {
   }
 
   async function refreshApprovals(target = project) {
+    const id = projectId(target);
+    if (!id) return;
     try {
-      const payload = await api(`/api/approvals?projectId=${projectId(target)}`);
-      setApprovalTasksByProject((prev) => ({ ...prev, [target]: payload.approvalTasks || [] }));
+      const payload = await api(`/api/approvals?projectId=${id}`);
+      setApprovalTasksByProject((prev) => ({ ...prev, [id]: payload.approvalTasks || [] }));
     } catch {
       setApiStatus("offline");
       setApiMessage("Approval queue unavailable");
@@ -107,25 +116,30 @@ export default function App() {
   }
 
   async function refreshTools(target = project) {
+    const id = projectId(target);
+    if (!id) return;
     try {
-      const payload = await api(`/api/projects/${projectId(target)}/tools`);
-      setToolsByProject((prev) => ({ ...prev, [target]: payload.tools || [] }));
+      const payload = await api(`/api/projects/${id}/project-tools`);
+      setToolsByProject((prev) => ({ ...prev, [id]: payload.projectTools || [] }));
     } catch {}
   }
 
   async function refreshKnowledge(target = project) {
+    const id = projectId(target);
+    if (!id) return;
     try {
-      const payload = await api(`/api/projects/${projectId(target)}/knowledge`);
-      setKnowledgeByProject((prev) => ({ ...prev, [target]: payload.knowledge || [] }));
+      const payload = await api(`/api/projects/${id}/knowledge`);
+      setKnowledgeByProject((prev) => ({ ...prev, [id]: payload.knowledge || [] }));
     } catch {}
   }
 
   useEffect(() => {
+    if (!project) return;
     refreshAgents(project);
     refreshApprovals(project);
     refreshTools(project);
     refreshKnowledge(project);
-  }, [project]);
+  }, [pid]); // key on stable string id, not object reference
 
   useEffect(() => {
     refreshOrgs();
@@ -150,14 +164,14 @@ export default function App() {
   function handleSelectOrg(org) {
     setSelectedOrg(org);
     setOrgScreen("orgDetail");
-    // Auto-pick first project in this org that exists in our project list
-    const firstProject = (org.projects || []).find((p) => PROJECTS.includes(p.name));
-    if (firstProject) setProject(firstProject.name);
+    // Auto-pick the first project from the org's actual project list
+    const first = (org.projects || [])[0];
+    if (first) setProject({ id: first.id, name: first.name, organizationId: org.id });
   }
 
-  function handleOpenProject(project) {
+  function handleOpenProject(proj) {
     setOrgScreen(null);
-    setProject(project.name);
+    setProject({ id: proj.id, name: proj.name, organizationId: proj.organizationId || selectedOrg?.id });
     setScreen("workspace");
     setPlane("control");
   }
@@ -196,6 +210,7 @@ export default function App() {
     : plane === "control" ? (screenTitle[screen] || screen)
     : plane === "execution" ? "Execution Plane" : "Business User Plane";
 
+  // Components receive the project object; internal string-key lookups use project?.name
   const sharedProps = { project, tools, knowledge, agents, approvalTasks, setScreen };
   const refreshProps = { refreshAgents, refreshApprovals, refreshTools, refreshKnowledge };
 
@@ -247,13 +262,26 @@ export default function App() {
             <h1>{title}</h1>
           </div>
           <div className="top-actions">
-            {!orgScreen && (
+            {!orgScreen && visibleProjects.length > 0 && (
               <label className="project-picker">
                 <span>Project</span>
-                <select value={project} onChange={(e) => setProject(e.target.value)}>
-                  {visibleProjects.map((p) => <option key={p}>{p}</option>)}
+                <select
+                  value={project?.id || ""}
+                  onChange={(e) => {
+                    const found = visibleProjects.find((p) => p.id === e.target.value);
+                    if (found) setProject(found);
+                  }}
+                >
+                  {visibleProjects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
                 </select>
               </label>
+            )}
+            {!orgScreen && visibleProjects.length === 0 && (
+              <span className="muted" style={{ fontSize: 12, padding: "0 8px" }}>
+                Select an org to see projects
+              </span>
             )}
             <button className="icon-button" title="Notifications" aria-label="Notifications"><Bell size={18} /></button>
             <div className="avatar" title="Platform Admin">PA</div>

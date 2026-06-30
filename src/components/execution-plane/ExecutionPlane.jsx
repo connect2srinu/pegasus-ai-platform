@@ -169,14 +169,14 @@ export default function ExecutionPlane({ project, agents, selectedAgentId, setSe
   return (
     <>
       <div className="grid cols-3">
-        <Metric label="Execution agents" value={agents.length} detail={project} />
+        <Metric label="Execution agents" value={agents.length} detail={typeof project === "object" ? project?.name : project} />
         <Metric label="Tokens last 24h" value={number(agents.reduce((sum, a) => sum + a.tokens24h, 0))} detail="Across registered agents" />
         <Metric label="Selected agent" value={agent.name} detail={`${agent.runtime} / ${agent.deployment}`} />
       </div>
 
       <div className="execution-layout">
         <section className="panel">
-          <div className="toolbar"><h2>Available Agents</h2><span className="pill">{project}</span></div>
+          <div className="toolbar"><h2>Available Agents</h2><span className="pill">{typeof project === "object" ? project?.name : project}</span></div>
           <div className="agent-list">
             {agents.map((a) => (
               <button

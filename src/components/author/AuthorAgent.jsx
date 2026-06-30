@@ -51,6 +51,15 @@ export default function AuthorAgent({ project, tools, knowledge, setScreen, refr
     return true;
   }
 
+  function advanceHint() {
+    if (stepIndex === 1) {
+      if (!form.name?.trim() && !form.systemPrompt?.trim()) return "Enter an agent name and system prompt to continue.";
+      if (!form.name?.trim()) return "Enter an agent name to continue.";
+      if (!form.systemPrompt?.trim()) return "Enter a system prompt to continue.";
+    }
+    return null;
+  }
+
   async function handlePublished(result) {
     await refreshAgents?.();
     await refreshApprovals?.();
@@ -93,9 +102,12 @@ export default function AuthorAgent({ project, tools, knowledge, setScreen, refr
             <button className="secondary" type="button" onClick={() => stepIndex > 0 ? setStepIndex(stepIndex - 1) : setScreen("workspace")}>
               {stepIndex === 0 ? "Cancel" : "Back"}
             </button>
-            <button className="primary" type="button" onClick={() => setStepIndex(stepIndex + 1)} disabled={!canAdvance()}>
-              {stepIndex === 4 ? "Review →" : "Next →"}
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+              {advanceHint() && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{advanceHint()}</span>}
+              <button className="primary" type="button" onClick={() => setStepIndex(stepIndex + 1)} disabled={!canAdvance()}>
+                {stepIndex === 4 ? "Review →" : "Next →"}
+              </button>
+            </div>
           </div>
         )}
         {stepIndex === 5 && (

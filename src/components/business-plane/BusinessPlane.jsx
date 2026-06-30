@@ -8,7 +8,7 @@ export default function BusinessPlane({ project, agents, setPlane, setSelectedAg
       <div className="detail-header">
         <div>
           <p className="eyebrow">Business user workspace</p>
-          <h2>{project}</h2>
+          <h2>{typeof project === "object" ? project?.name : project}</h2>
           <p>Business users see only agents approved and runnable for the current project.</p>
         </div>
         <button className="primary" onClick={() => setPlane("execution")}>View Execution Runs</button>

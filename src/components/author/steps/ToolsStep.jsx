@@ -1,13 +1,22 @@
-import { TOOL_TYPES, KB_TYPES, fallback } from "../../../constants.js";
+import { TOOL_TYPES, KB_TYPES } from "../../../constants.js";
 
 export default function ToolsStep({ form, onChange, project, tools, knowledge }) {
-  const projectTools = tools.length > 0
-    ? tools
-    : fallback[project]?.tools.map((name) => ({ id: name, name, toolType: "mcp", status: "approved" })) || [];
+  // tools comes from project-tools (org tool grants with ACTIVE status)
+  // Normalise whatever shape the API returns into { id, name, toolType, description }
+  const projectTools = (tools || []).map((t) => ({
+    id:          t.logicalToolDefinitionId || t.id || t.toolKey,
+    name:        t.displayName || t.toolKey || t.name || t.id,
+    toolType:    t.ltdSourceType?.toLowerCase() || t.toolType || "lambda",
+    description: t.description,
+    status:      t.toolStatus || "ACTIVE",
+  }));
 
-  const projectKbs = knowledge.length > 0
-    ? knowledge
-    : fallback[project]?.knowledge.map((name) => ({ id: name, name, kbType: "bedrock_kb", status: "approved" })) || [];
+  const projectKbs = (knowledge || []).map((k) => ({
+    id:          k.id || k.knowledgeBaseId,
+    name:        k.name || k.displayName || k.id,
+    kbType:      k.kbType || "bedrock_kb",
+    description: k.description,
+  }));
 
   function toggleTool(toolId) {
     const current = form.selectedTools || [];

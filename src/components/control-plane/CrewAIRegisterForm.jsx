@@ -100,9 +100,10 @@ export default function CrewAIRegisterForm({ project, tools, knowledge, refreshA
   const [validationStatus, setValidationStatus] = useState(null);
   const [approvalTasks, setApprovalTasks] = useState([]);
 
+  const projectName = typeof project === "object" ? project?.name : project;
   const pid = toProjectId(project);
   const projectExcludesCrewAI = CREWAI_EXCLUDED_PROJECTS.some(
-    (p) => p === project || p === pid
+    (p) => p === projectName || p === pid
   );
 
   // Org list from props (live) or fallback
@@ -247,7 +248,7 @@ export default function CrewAIRegisterForm({ project, tools, knowledge, refreshA
         <div className="validation-item fail" style={{ marginBottom: 14 }}>
           <AlertTriangle size={15} />
           <span>
-            Project <strong>{project}</strong> does not permit CrewAI agents.
+            Project <strong>{projectName}</strong> does not permit CrewAI agents.
             Switch to a project that allows CrewAI (e.g. Claims Operations or Billing Experience),
             or ask a Platform Admin to enable CrewAI for this project.
           </span>

@@ -6,6 +6,86 @@ import PackageValidationResults from "./PackageValidationResults.jsx";
 import DeploymentStatus from "./DeploymentStatus.jsx";
 import { PromoteToProductionPanel } from "./Tools.jsx";
 
+function AgentInvokePanel({ agent }) {
+  const [input, setInput]     = useState("");
+  const [output, setOutput]   = useState(null);
+  const [busy, setBusy]       = useState(false);
+  const [error, setError]     = useState("");
+  const [history, setHistory] = useState([]);
+
+  async function invoke() {
+    if (!input.trim()) return;
+    setBusy(true); setError(""); setOutput(null);
+    try {
+      const res = await api(`/api/agents/${agent.id}/invoke`, {
+        method: "POST",
+        body: JSON.stringify({ message: input }),
+      });
+      setOutput(res);
+      setHistory((h) => [{ input, output: res.output, latencyMs: res.latencyMs }, ...h].slice(0, 10));
+      setInput("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <h2>Test / Invoke</h2>
+      <p className="muted" style={{ marginBottom: 14 }}>Send a message to the deployed agent and see its response.</p>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <input
+          style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 14 }}
+          placeholder="Type a message to the agent…"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !busy && invoke()}
+          disabled={busy}
+        />
+        <button className="primary" onClick={invoke} disabled={busy || !input.trim()}>
+          {busy ? "Invoking…" : "Send →"}
+        </button>
+      </div>
+
+      {error && (
+        <div className="validation-item fail" style={{ marginBottom: 10 }}>
+          <strong>ERROR</strong><span>{error}</span>
+        </div>
+      )}
+
+      {output && (
+        <div className="dep-card dep-card--deployed" style={{ marginBottom: 16 }}>
+          <div className="dep-meta-grid">
+            <div className="dep-meta-row"><span>Response</span><span style={{ whiteSpace: "pre-wrap" }}>{output.output}</span></div>
+            <div className="dep-meta-row"><span>Latency</span><code>{output.latencyMs} ms</code></div>
+            <div className="dep-meta-row"><span>Model</span><code>{output.model}</code></div>
+          </div>
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <>
+          <h3 style={{ marginTop: 16, marginBottom: 8, fontSize: 13 }}>Recent invocations</h3>
+          {history.map((h, i) => (
+            <div key={i} style={{ borderLeft: "3px solid var(--border)", paddingLeft: 12, marginBottom: 10 }}>
+              <p style={{ margin: "0 0 2px", fontSize: 12, color: "var(--text-muted)" }}>
+                <strong>You:</strong> {h.input}
+              </p>
+              <p style={{ margin: "0 0 2px", fontSize: 12 }}>
+                <strong>Agent:</strong> {h.output}
+              </p>
+              <span className="muted" style={{ fontSize: 11 }}>{h.latencyMs} ms</span>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 function MetaRow({ label, value }) {
   if (!value) return null;
   return (
@@ -76,7 +156,8 @@ export default function AgentDetail({ agent, setScreen, setPlane }) {
   const [deployments, setDeployments] = useState([]);
   const [loadingExtra, setLoadingExtra] = useState(false);
 
-  const isCrewAI = agent?.agentType === "crewai";
+  const isCrewAI    = agent?.agentType === "crewai";
+  const isAuthored  = !!(agent?.authoredVia || agent?.status); // agents from new DB always have status
 
   // Derive the latest version ID from the agent summary (format: ver-<agentId>-v<version digits>)
   const latestVersionId = agent?.id
@@ -99,7 +180,7 @@ export default function AgentDetail({ agent, setScreen, setPlane }) {
     setValidationStatus(null);
     setDeployments([]);
 
-    if (isCrewAI && agent.id) {
+    if (agent.id) {
       loadDeployments(agent.id);
     }
   }, [agent?.id]);
@@ -110,10 +191,9 @@ export default function AgentDetail({ agent, setScreen, setPlane }) {
 
   const tabs = [
     { key: "overview",   label: "Overview" },
-    ...(isCrewAI ? [
-      { key: "validation", label: "Validation" },
-      { key: "deployment", label: "Deployment" },
-    ] : []),
+    ...(isCrewAI ? [{ key: "validation", label: "Validation" }] : []),
+    ...(isCrewAI || isAuthored ? [{ key: "deployment", label: "Deployment" }] : []),
+    ...((agent?.status === "ACTIVE" || agent?.deployment === "Deployed") ? [{ key: "invoke", label: "Test / Invoke" }] : []),
   ];
 
   return (
@@ -191,7 +271,7 @@ export default function AgentDetail({ agent, setScreen, setPlane }) {
 
         {tab === "deployment" && (
           <>
-            <h2 style={{ marginTop: 16 }}>Deployment history</h2>
+            <h2 style={{ marginTop: 16 }}>Deployment</h2>
             {loadingExtra
               ? <p className="muted">Loading…</p>
               : <DeploymentStatus
@@ -202,7 +282,6 @@ export default function AgentDetail({ agent, setScreen, setPlane }) {
                   onDeployed={() => agent.id && loadDeployments(agent.id)}
                 />
             }
-            {/* Promote to PROD — shown when agent version is approved and not yet promoted */}
             {version && version.lifecycleState === "approved" && version.lifecycleState !== "promoted" && (
               <PromoteToProductionPanel
                 agent={agent}
@@ -211,6 +290,10 @@ export default function AgentDetail({ agent, setScreen, setPlane }) {
               />
             )}
           </>
+        )}
+
+        {tab === "invoke" && (
+          <AgentInvokePanel agent={agent} />
         )}
       </section>
 

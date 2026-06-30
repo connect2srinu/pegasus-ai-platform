@@ -18,7 +18,7 @@ authoringMode: form
 role: ${form.role || "standalone"}
 owner:
   userId: ${form.ownerUserId || "current-user@example.com"}
-  businessUnit: ${project}
+  businessUnit: ${typeof project === "object" ? project?.name : project}
 
 runtime:
   target: agentcore
@@ -70,7 +70,7 @@ export default function ReviewStep({ form, project, onPublished }) {
   const manifest = buildManifest(form, project);
 
   useEffect(() => {
-    api("/api/health")
+    api("/health")
       .then(() => setApiOnline(true))
       .catch(() => setApiOnline(false));
   }, []);

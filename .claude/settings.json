@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(kill %1)",
+      "Bash(wait)",
+      "Bash(awk '{print $1}')",
+      "Bash(PGPASSWORD=guardian123 psql -h localhost -U guardian -d guaistudio -c \"UPDATE tool_approval_requests SET status = 'pending' WHERE status = 'PENDING'; SELECT id, status FROM tool_approval_requests;\")",
+      "Bash(PGPASSWORD=guardian123 psql -h localhost -U guardian -d guaistudio -c \"SELECT id FROM organizations LIMIT 3;\")",
+      "Bash(PGPASSWORD=guardian123 psql -h localhost -U guardian -d guaistudio -c ' *)",
+      "Bash(PGPASSWORD=guardian123 psql -h localhost -U guardian -d guaistudio -c \"\\\\d environment_tool_deployments\")",
+      "Bash(PGPASSWORD=guardian123 psql -h localhost -U guardian -d guaistudio -c \"\\\\d project_tool_grants\")"
+    ]
+  }
+}

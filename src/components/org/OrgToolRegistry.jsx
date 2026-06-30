@@ -10,11 +10,14 @@ import { api } from "../../utils.js";
 
 const SIDE_EFFECT_COLORS = { READ_ONLY: "green", WRITE: "amber", DESTRUCTIVE: "red" };
 const DEPLOY_STATUS_ICON = {
-  ACTIVE: <CheckCircle2 size={13} style={{ color: "var(--green)" }} />,
-  NOT_DEPLOYED: <XCircle size={13} style={{ color: "var(--muted)" }} />,
-  PENDING_SETUP: <Clock size={13} style={{ color: "var(--amber)" }} />,
-  STALE: <AlertTriangle size={13} style={{ color: "var(--amber)" }} />,
-  DRIFT_DETECTED: <AlertTriangle size={13} style={{ color: "var(--red)" }} />,
+  ACTIVE:           <CheckCircle2 size={13} style={{ color: "var(--green)" }} />,
+  NOT_DEPLOYED:     <XCircle size={13} style={{ color: "var(--muted)" }} />,
+  PENDING_GATEWAY:  <Clock size={13} style={{ color: "var(--amber)" }} />,
+  DEPLOYING:        <RefreshCw size={13} style={{ color: "var(--blue)", animation: "spin 1s linear infinite" }} />,
+  FAILED:           <XCircle size={13} style={{ color: "var(--red)" }} />,
+  PENDING_SETUP:    <Clock size={13} style={{ color: "var(--amber)" }} />,
+  STALE:            <AlertTriangle size={13} style={{ color: "var(--amber)" }} />,
+  DRIFT_DETECTED:   <AlertTriangle size={13} style={{ color: "var(--red)" }} />,
   PENDING_APPROVAL: <Clock size={13} style={{ color: "var(--amber)" }} />,
 };
 
@@ -47,15 +50,28 @@ function RegisterToolForm({ orgId, environments, onSuccess, onCancel }) {
     businessOwner: "",
     dataClassification: "internal",
     credentialProviderRef: "",
+    sourceResourceArn: "",
+    apiStage: "",
     environmentId: "",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [discoveredApis, setDiscoveredApis] = useState([]);
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); }
 
   function deriveKey(name) {
     return name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  }
+
+  // Load discovered API Gateway resources when API_GATEWAY type is selected
+  function onSourceTypeChange(v) {
+    set("sourceType", v);
+    if (v === "API_GATEWAY" && discoveredApis.length === 0) {
+      api(`/api/organizations/${orgId}/discovered-resources?type=API_GATEWAY_REST`)
+        .then((r) => setDiscoveredApis(r.resources || []))
+        .catch(() => {});
+    }
   }
 
   async function submit(e) {
@@ -67,6 +83,8 @@ function RegisterToolForm({ orgId, environments, onSuccess, onCancel }) {
       const body = { ...form };
       if (!body.credentialProviderRef) delete body.credentialProviderRef;
       if (!body.environmentId) delete body.environmentId;
+      if (!body.sourceResourceArn) delete body.sourceResourceArn;
+      if (!body.apiStage) delete body.apiStage;
       const result = await api(`/api/organizations/${orgId}/logical-tools`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -128,7 +146,7 @@ function RegisterToolForm({ orgId, environments, onSuccess, onCancel }) {
         <div className="form-grid">
           <label className="field">
             Source type
-            <select value={form.sourceType} onChange={(e) => set("sourceType", e.target.value)}>
+            <select value={form.sourceType} onChange={(e) => onSourceTypeChange(e.target.value)}>
               {["LAMBDA","API_GATEWAY","BEDROCK_KB","MCP","EXISTING_GATEWAY_TOOL"].map((t) => (
                 <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
               ))}
@@ -143,6 +161,90 @@ function RegisterToolForm({ orgId, environments, onSuccess, onCancel }) {
             </select>
           </label>
         </div>
+
+        {/* API Gateway-specific fields */}
+        {form.sourceType === "LAMBDA" && (
+          <label className="field">
+            Lambda ARN <span className="muted">(optional — can be set after approval)</span>
+            <input
+              value={form.sourceResourceArn}
+              onChange={(e) => set("sourceResourceArn", e.target.value)}
+              placeholder="arn:aws:lambda:us-east-1:123456789012:function:my-fn"
+              className="arn-input"
+            />
+            <span className="hint">Leave blank if the function will be registered via AWS discovery</span>
+          </label>
+        )}
+
+        {form.sourceType === "API_GATEWAY" && (
+          <div className="otr-apigw-section">
+            <p className="field-label" style={{ marginBottom: 8 }}>
+              API Gateway endpoint
+              <span className="muted" style={{ fontWeight: 400, marginLeft: 6 }}>
+                — the platform auto-deploys a Lambda wrapper to expose this via MCP
+              </span>
+            </p>
+
+            {discoveredApis.length > 0 && (
+              <label className="field">
+                Select from discovered APIs
+                <select
+                  value={form.sourceResourceArn}
+                  onChange={(e) => {
+                    const dr = discoveredApis.find((r) => r.resourceArn === e.target.value);
+                    const meta = dr?.metadataJson ? JSON.parse(dr.metadataJson) : {};
+                    set("sourceResourceArn", e.target.value);
+                    if (meta.stageName) set("apiStage", meta.stageName);
+                    if (dr && !form.displayName) set("displayName", dr.resourceName || "");
+                    if (dr && !form.toolKey) set("toolKey", deriveKey(dr.resourceName || ""));
+                  }}
+                >
+                  <option value="">— pick a discovered API Gateway —</option>
+                  {discoveredApis.map((r) => {
+                    const meta = r.metadataJson ? JSON.parse(r.metadataJson) : {};
+                    return (
+                      <option key={r.id} value={r.resourceArn}>
+                        {r.resourceName} ({r.resourceId}){meta.stageName ? ` · stage: ${meta.stageName}` : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+                <span className="hint">Run AWS discovery first if your API doesn't appear here</span>
+              </label>
+            )}
+
+            <div className="form-grid">
+              <label className="field">
+                API Gateway ARN {discoveredApis.length === 0 && <span className="required">*</span>}
+                <input
+                  value={form.sourceResourceArn}
+                  onChange={(e) => set("sourceResourceArn", e.target.value)}
+                  placeholder="arn:aws:apigateway:us-east-1::restapis/abc1def234"
+                  className="arn-input"
+                />
+                <span className="hint">Format: arn:aws:apigateway:REGION::restapis/API_ID</span>
+              </label>
+              <label className="field">
+                Stage name <span className="muted">(optional)</span>
+                <input
+                  value={form.apiStage}
+                  onChange={(e) => set("apiStage", e.target.value)}
+                  placeholder="prod"
+                />
+                <span className="hint">e.g. prod, v1, dev — appended to the invoke URL</span>
+              </label>
+            </div>
+
+            <div className="validation-item" style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 6, padding: "8px 12px", marginTop: 4 }}>
+              <AlertCircle size={13} style={{ color: "var(--blue)", flexShrink: 0 }} />
+              <span style={{ fontSize: 12 }}>
+                On deployment, the platform packages a thin MCP-protocol Lambda (
+                <code>guardian-apigw-{form.toolKey || "tool_key"}</code>) and registers it
+                as the AgentCore Gateway target. Your API Gateway is never exposed directly.
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="form-grid">
           <label className="field">
@@ -392,44 +494,143 @@ function DeployToEnvForm({ orgId, ltd, environments, connections, onSuccess, onC
 
 // ── Environment deployment row ────────────────────────────────────────────────
 
-function EnvDeploymentRow({ envDep, onValidate }) {
-  const [validating, setValidating] = useState(false);
+function EnvDeploymentRow({ envDep, ltd, orgId, onValidate, onDeployed }) {
+  const [validating, setValidating]     = useState(false);
+  const [deploying, setDeploying]       = useState(false);
+  const [deployError, setDeployError]   = useState("");
+  const [deployResult, setDeployResult] = useState(null);
+  const [arnOverride, setArnOverride]   = useState("");
+  const [stageOverride, setStageOverride] = useState("");
+  const [showArnInput, setShowArnInput] = useState(false);
+
+  const needsGateway = ["PENDING_GATEWAY", "NOT_DEPLOYED", "FAILED"].includes(envDep.deploymentStatus);
+  const isApiGw = ltd.sourceType === "API_GATEWAY";
+  const hasNoArn = isApiGw && !envDep.sourceResourceArn && !envDep.apiGatewayUrl;
 
   async function runValidate() {
     setValidating(true);
     try {
-      const result = await api(`/api/env-tool-deployments/${envDep.etdId || envDep.id}/validate`, {
-        method: "PATCH",
-        body: JSON.stringify({}),
-      });
+      const result = await api(`/api/env-tool-deployments/${envDep.etdId || envDep.id}/validate`, { method: "PATCH", body: JSON.stringify({}) });
       onValidate(result);
+    } catch (_) {}
+    finally { setValidating(false); }
+  }
+
+  async function deployToGateway() {
+    setDeploying(true);
+    setDeployError("");
+    try {
+      const body = { environmentId: envDep.environmentId };
+      if (arnOverride.trim())   body.sourceResourceArn = arnOverride.trim();
+      if (stageOverride.trim()) body.apiStage           = stageOverride.trim();
+      const r = await api(`/api/organizations/${orgId}/logical-tools/${ltd.id}/deploy-to-gateway`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      setDeployResult(r);
+      onDeployed?.(r);
     } catch (err) {
-      // show inline
+      setDeployError(err.message);
     } finally {
-      setValidating(false);
+      setDeploying(false);
     }
   }
 
   return (
-    <div className="otr-env-row">
-      <div className="otr-env-row-name">
-        <span className="otr-env-badge">{envDep.environmentName || envDep.environmentId}</span>
-        {envDep.isProduction && <span className="pill pill--red" style={{ fontSize: 9, padding: "1px 5px" }}>PROD</span>}
+    <div className="otr-env-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="otr-env-row-name">
+          <span className="otr-env-badge">{envDep.environmentName || envDep.environmentId}</span>
+          {envDep.isProduction && <span className="pill pill--red" style={{ fontSize: 9, padding: "1px 5px" }}>PROD</span>}
+        </div>
+        <div className="otr-env-row-status">{envBadge(envDep.deploymentStatus)}</div>
+        <div className="otr-env-row-actions" style={{ marginLeft: "auto" }}>
+          {needsGateway && !deployResult && (
+            <>
+              {isApiGw && hasNoArn && (
+                <button
+                  className="secondary"
+                  style={{ fontSize: 11, padding: "2px 8px" }}
+                  onClick={() => setShowArnInput((v) => !v)}
+                >
+                  <AlertCircle size={11} style={{ marginRight: 3, color: "var(--amber)" }} />
+                  {showArnInput ? "Hide" : "Set ARN"}
+                </button>
+              )}
+              <button
+                className="primary"
+                style={{ fontSize: 11, padding: "3px 10px", display: "flex", alignItems: "center", gap: 5 }}
+                onClick={deployToGateway}
+                disabled={deploying || (isApiGw && hasNoArn && !arnOverride.trim())}
+                title={isApiGw && hasNoArn && !arnOverride.trim() ? "Set the API Gateway ARN first" : undefined}
+              >
+                {deploying
+                  ? <><RefreshCw size={11} style={{ animation: "spin 1s linear infinite" }} />Deploying…</>
+                  : <><ArrowRight size={11} />Deploy to Gateway</>
+                }
+              </button>
+            </>
+          )}
+          {envDep.deploymentStatus === "ACTIVE" && !deployResult && (
+            <button className="secondary" style={{ fontSize: 11, padding: "2px 8px" }} onClick={runValidate} disabled={validating}>
+              <RefreshCw size={11} style={{ marginRight: 3 }} />{validating ? "Checking…" : "Validate"}
+            </button>
+          )}
+        </div>
       </div>
-      <div className="otr-env-row-status">{envBadge(envDep.deploymentStatus)}</div>
-      <div className="otr-env-row-actions">
-        {envDep.deploymentStatus === "ACTIVE" && (
-          <button
-            className="secondary"
-            style={{ fontSize: 11, padding: "2px 8px" }}
-            onClick={runValidate}
-            disabled={validating}
-          >
-            <RefreshCw size={11} style={{ marginRight: 3 }} />
-            {validating ? "Checking…" : "Validate"}
-          </button>
-        )}
-      </div>
+
+      {/* API Gateway ARN input (shown for apigw tools with no stored ARN) */}
+      {isApiGw && showArnInput && !deployResult && (
+        <div style={{ display: "flex", gap: 8, padding: "8px 0 4px", alignItems: "flex-end" }}>
+          <label className="field" style={{ flex: 2, margin: 0 }}>
+            <span style={{ fontSize: 11, fontWeight: 600 }}>API Gateway ARN</span>
+            <input
+              value={arnOverride}
+              onChange={(e) => setArnOverride(e.target.value)}
+              placeholder="arn:aws:apigateway:us-east-1::restapis/uamvdbkj7i"
+              className="arn-input"
+              style={{ fontSize: 11 }}
+            />
+          </label>
+          <label className="field" style={{ flex: 1, margin: 0 }}>
+            <span style={{ fontSize: 11, fontWeight: 600 }}>Stage <span className="muted">(optional)</span></span>
+            <input
+              value={stageOverride}
+              onChange={(e) => setStageOverride(e.target.value)}
+              placeholder="prod"
+              style={{ fontSize: 11 }}
+            />
+          </label>
+        </div>
+      )}
+
+      {/* Active API Gateway info */}
+      {isApiGw && envDep.deploymentStatus === "ACTIVE" && envDep.wrapperLambdaArn && (
+        <div className="muted" style={{ fontSize: 10, paddingTop: 4 }}>
+          Wrapper: <code>{envDep.wrapperLambdaArn.split(":").pop()}</code>
+        </div>
+      )}
+
+      {deployError && (
+        <div className="validation-item fail" style={{ fontSize: 11, margin: 0 }}>
+          <AlertTriangle size={11} /><span>{deployError}</span>
+        </div>
+      )}
+
+      {deployResult && (
+        <div className="validation-item pass" style={{ fontSize: 11, margin: 0, flexDirection: "column", gap: 3 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <CheckCircle2 size={11} />
+            <strong>Deployed — target <code>{deployResult.targetId}</code></strong>
+          </div>
+          {deployResult.gatewayUrl && (
+            <div style={{ paddingLeft: 17 }}>
+              <span className="muted">MCP endpoint: </span>
+              <code style={{ fontSize: 10, wordBreak: "break-all" }}>{deployResult.gatewayUrl}</code>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -894,7 +1095,10 @@ function ToolCard({ ltd, environments, connections, orgId, onRefresh }) {
                         <EnvDeploymentRow
                           key={env.id}
                           envDep={{ ...dep, environmentName: env.name, isProduction: env.isProduction }}
+                          ltd={ltd}
+                          orgId={orgId}
                           onValidate={handleValidate}
+                          onDeployed={() => onRefresh()}
                         />
                       );
                     })}

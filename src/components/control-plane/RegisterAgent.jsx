@@ -4,14 +4,15 @@ import { AGENT_TYPES, SAMPLE_YAML, fallback } from "../../constants.js";
 import CrewAIRegisterForm from "./CrewAIRegisterForm.jsx";
 
 export default function RegisterAgent({ project, tools, knowledge, refreshAgents, refreshApprovals, setScreen, selectAgent, orgs }) {
-  const defaults = fallback[project];
+  const projectName = typeof project === "object" ? project?.name : project;
+  const defaults = fallback[projectName] || fallback[Object.keys(fallback)[0]] || { tools: [], knowledge: [] };
   const [agentType, setAgentType] = useState("crewai");
   const [form, setForm] = useState({
     name: "Claims Intake Agent",
     agentType: "crewai",
     runtimeTarget: "agentcore",
     modelId: "anthropic.claude-3-5-sonnet",
-    description: `Submit a normalized portable agent specification for ${project}.`,
+    description: `Submit a normalized portable agent specification for ${projectName}.`,
     tools: defaults.tools.slice(0, 2).join(","),
     knowledge: defaults.knowledge[0],
     shortTermMemory: "true",
@@ -27,9 +28,10 @@ export default function RegisterAgent({ project, tools, knowledge, refreshAgents
   function update(e) { setForm({ ...form, [e.target.name]: e.target.value }); }
 
   useEffect(() => {
-    setForm((f) => ({ ...f, description: `Submit a normalized portable agent specification for ${project}.`, tools: defaults.tools.slice(0, 2).join(","), knowledge: defaults.knowledge[0] }));
-    setYamlText(SAMPLE_YAML.replace("claims-operations", projectId(project)).replace("Claims Operations", project));
-  }, [project]);
+    const fb2 = fallback[projectName] || fallback[Object.keys(fallback)[0]] || { tools: [], knowledge: [] };
+    setForm((f) => ({ ...f, description: `Submit a normalized portable agent specification for ${projectName}.`, tools: (fb2.tools || []).slice(0, 2).join(","), knowledge: (fb2.knowledge || [])[0] || "" }));
+    setYamlText(SAMPLE_YAML.replace("claims-operations", projectId(project)).replace("Claims Operations", projectName));
+  }, [projectName]);
 
   async function submit(e) {
     e.preventDefault();

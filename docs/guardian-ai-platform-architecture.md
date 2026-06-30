@@ -101,75 +101,86 @@ flowchart TB
 | Observability | OpenTelemetry, CloudWatch, X-Ray, Arize AI |
 | Audit | S3 immutable archive, Aurora/DynamoDB audit index, CloudWatch logs |
 
-## Agent Lifecycle
+## Agent Lifecycle (As Implemented)
+
+The implemented lifecycle is simpler than the full aspirational model. Security review is absorbed into the platform_admin approval step.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Draft
-  Draft --> Submitted: submit for review
-  Submitted --> SecurityReview: schema and policy checks pass
-  SecurityReview --> BusinessOwnerReview: security accepted
-  BusinessOwnerReview --> PlatformAdminReview: project owner approved
-  PlatformAdminReview --> Approved: platform admin approved
-  Approved --> Deploying: deploy request
-  Deploying --> Deployed: deployment succeeded
-  Deploying --> DeploymentFailed: deployment failed
-  DeploymentFailed --> Approved: retry
-  Deployed --> Suspended: policy or operational hold
-  Suspended --> Deployed: reinstate
-  Deployed --> Retired: retire
-  Approved --> Revoked: approval revoked
-  Revoked --> Draft: new version
-  Retired --> [*]
+  [*] --> DRAFT
+  DRAFT --> SUBMITTED: POST /api/agents/publish (Author Wizard step 6)
+  SUBMITTED --> APPROVED: both business_owner AND platform_admin approve
+  SUBMITTED --> REJECTED: either approver rejects
+  REJECTED --> SUBMITTED: author edits and re-publishes
+  APPROVED --> deploying: POST /agents/:id/deploy
+  deploying --> DEPLOYED: AgentCore runtime + endpoint READY
+  deploying --> FAILED: runtime creation error
+  FAILED --> APPROVED: retry deploy
 ```
 
-## Registration And Approval Flow
+Approval tasks (`agent_approval_requests`) are created automatically on publish with `approver_type = business_owner | platform_admin`. Both must reach `status = approved` before the agent transitions to `APPROVED`. The unified approval endpoint `POST /api/approvals/:taskId/decision` handles both task types.
+
+## Registration And Approval Flow (As Implemented)
 
 ```mermaid
 sequenceDiagram
-  participant Dev as Agent Developer
-  participant UI as Guardian UI/API
-  participant Registry as Agent Registry
-  participant Validator as Validation Service
-  participant Policy as Policy Engine
-  participant Owner as Project Owner
+  participant Dev as Agent Author
+  participant UI as React Frontend
+  participant Server as server.cjs (port 4201)
+  participant DB as SQLite / Postgres
+  participant Owner as Business Owner
   participant Admin as Platform Admin
-  participant Audit as Audit Store
 
-  Dev->>UI: Submit portable agent specification
-  UI->>Registry: Create draft/submitted version
-  Registry->>Validator: Run schema and configuration validation
-  Validator->>Policy: Check project, tool, KB, memory, and secret policies
-  Policy-->>Validator: Validation decision
-  Validator->>Registry: Store validation results and risk score
-  Registry->>Owner: Request business owner approval
-  Owner->>Registry: Approve or reject
-  Registry->>Admin: Request platform admin approval
-  Admin->>Registry: Approve or reject
-  Registry->>Audit: Write lifecycle event
+  Dev->>UI: Complete 6-step Author Wizard
+  UI->>Server: POST /api/agents/publish (name, systemPrompt, tools, risk_tier)
+  Server->>DB: INSERT agents (status=SUBMITTED)
+  Server->>DB: INSERT agent_approval_requests x2 (business_owner, platform_admin)
+  Server-->>UI: { agentId, status: SUBMITTED }
+  UI->>UI: Redirect to Approvals queue after 1.2 s
+
+  Owner->>Server: POST /api/approvals/:taskId/decision { decision: "approve" }
+  Server->>DB: UPDATE agent_approval_requests SET status=approved
+  Server->>DB: Check if all tasks approved → UPDATE agents SET status=APPROVED
+
+  Admin->>Server: POST /api/approvals/:taskId/decision { decision: "approve" }
+  Server->>DB: UPDATE agent_approval_requests SET status=approved
+  Server->>DB: Both approved → UPDATE agents SET status=APPROVED
+
+  Dev->>Server: POST /api/projects/:id/agents/:agentId/deploy
+  Server->>Server: Block if status ≠ APPROVED
+  Server->>Server: Generate Strands Python agent.py
+  Server->>Server: Upload agent.py to S3 (agents/{id}/{ver}/agent.py)
+  Server->>Server: CreateAgentRuntime (codeConfiguration.s3) → poll READY (~3 min)
+  Server->>Server: CreateAgentRuntimeEndpoint (networkMode=PUBLIC) → poll READY
+  Server->>DB: UPDATE agent_environment_deployments (status=DEPLOYED, endpoint_id, endpoint_arn)
 ```
 
-## Deployment Flow
+## Deployment Flow (As Implemented — AgentCore Runtime)
 
 ```mermaid
 sequenceDiagram
-  participant User as Project Owner/Admin
-  participant Registry as Agent Registry
-  participant Deploy as Deployment Service
-  participant Gateway as AgentCore Gateway
-  participant Runtime as AgentCore Runtime
-  participant Policy as Policy Engine
-  participant Audit as Audit Store
+  participant Server as server.cjs
+  participant Codegen as strands-generator.cjs
+  participant S3 as AWS S3
+  participant AC as AWS Bedrock AgentCore
+  participant DB as DB (agent_environment_deployments)
 
-  User->>Registry: Request deployment for approved version
-  Registry->>Policy: Confirm deploy permission and approval status
-  Policy-->>Registry: Permit
-  Registry->>Deploy: Start deployment workflow
-  Deploy->>Gateway: Provision allowed tool mappings
-  Deploy->>Runtime: Create or update runtime agent
-  Deploy->>Policy: Publish runtime policy snapshot
-  Deploy->>Registry: Store deployment metadata
-  Deploy->>Audit: Write deployment event
+  Server->>Codegen: generateStrandsCode(agentSpec)
+  Codegen-->>Server: agent.py (Python, Strands SDK)
+  Server->>S3: PutObject agents/{agentId}/{version}/agent.py
+  Server->>AC: CreateAgentRuntime (s3.bucketName, s3.objectKey, executionRoleArn)
+  AC-->>Server: { agentRuntimeId }
+  loop Poll every 10 s, max 18 attempts
+    Server->>AC: GetAgentRuntime(agentRuntimeId)
+    AC-->>Server: { status }
+  end
+  Server->>AC: CreateAgentRuntimeEndpoint (agentRuntimeId, networkMode=PUBLIC)
+  AC-->>Server: { endpointId }
+  loop Poll until READY
+    Server->>AC: GetAgentRuntimeEndpoint(endpointId)
+    AC-->>Server: { status, endpointUrl }
+  end
+  Server->>DB: UPDATE deployment_status=DEPLOYED, agent_core_endpoint_id, agent_core_endpoint_arn
 ```
 
 ## Runtime Execution Flow

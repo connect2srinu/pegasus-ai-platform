@@ -23,6 +23,7 @@ const {
   invokeAgentRuntime,
   listAgentRuntimes,
 } = require("./services/agentcore-client.cjs");
+const { ensureGateway, deployTool } = require("./services/gateway-deployer.cjs");
 
 // Load .env.local if present (local dev only — never committed)
 const envLocalPath = path.resolve(__dirname, "..", ".env.local");
@@ -848,13 +849,17 @@ function ensureRegistry() {
   // Backfill: add environmentId to existing account connections that predate this field
   for (const conn of registry.awsAccountConnections) {
     if (!conn.environmentId) {
-      // Guess from the old free-form `environment` string field
-      const envName = conn.environmentType || (conn.environment === "production" ? "PROD" : "DEV");
+      // Normalize free-form environmentType to canonical env name (DEV/PROD/TEST/STAGE)
+      const rawType = (conn.environmentType || conn.environment || "development").toLowerCase();
+      const canonical = rawType.startsWith("prod") ? "PROD"
+        : rawType.startsWith("stage") ? "STAGE"
+        : rawType.startsWith("test") ? "TEST"
+        : "DEV";
       const matchedEnv = registry.organizationEnvironments.find(
-        (e) => e.organizationId === conn.organizationId && e.name === envName
+        (e) => e.organizationId === conn.organizationId && e.name === canonical
       );
       conn.environmentId   = matchedEnv?.id || null;
-      conn.environmentType = envName;
+      conn.environmentType = canonical;
       conn.deploymentRoleArn ||= conn.provisioningRoleArn || null;
     }
   }
@@ -928,6 +933,54 @@ function ensureRegistry() {
       );
       if (ltd) pt.logicalToolDefinitionId = ltd.id;
     }
+  }
+  // Retroactive ETD creation: for every APPROVED LTD that has no DEV ETD yet, create one now.
+  // This covers tools approved before the auto-ETD logic was in place, or where the connection
+  // environmentId backfill just ran for the first time.
+  for (const ltd of registry.logicalToolDefinitions) {
+    if (ltd.approvalStatus !== "APPROVED") continue;
+    const devEnv = registry.organizationEnvironments.find(
+      (e) => e.organizationId === ltd.organizationId && !e.isProduction && e.promotionOrder === 0
+    );
+    if (!devEnv) continue;
+    const alreadyHasEtd = registry.environmentToolDeployments.some(
+      (e) => e.logicalToolDefinitionId === ltd.id && e.environmentId === devEnv.id
+    );
+    if (alreadyHasEtd) continue;
+    // Find the best matching DEV account connection
+    const devConn = registry.awsAccountConnections.find(
+      (c) => c.organizationId === ltd.organizationId && c.environmentId === devEnv.id
+    );
+    if (!devConn) continue;  // no connection linked yet — skip
+    // Find the source ARN from the TRR
+    const trr = registry.toolRegistrationRequests.find(
+      (t) => t.logicalToolDefinitionId === ltd.id || t.organizationId === ltd.organizationId && t.approvalStatus === "APPROVED"
+    );
+    const sourceArn = trr?.sourceResourceArn || null;
+    // Find the DEV environment runtime mapping for gateway ARN
+    const devErm = registry.environmentRuntimeMappings.find(
+      (m) => m.organizationId === ltd.organizationId && m.environmentId === devEnv.id
+    );
+    const gatewayArn = devErm?.agentCoreGatewayArn || devConn.agentCoreGatewayArn || null;
+    const now2 = new Date().toISOString();
+    const autoEtd = {
+      id: `etd-${ltd.id}-auto-dev`,
+      organizationId: ltd.organizationId,
+      logicalToolDefinitionId: ltd.id,
+      environmentId: devEnv.id,
+      awsAccountConnectionId: devConn.id,
+      sourceResourceArn: sourceArn,
+      gatewayArn,
+      gatewayTargetId: `tgt-${ltd.toolKey.replace(/_/g, "-")}`,
+      mcpToolName: ltd.toolKey,
+      deploymentStatus: gatewayArn ? "ACTIVE" : "PENDING_GATEWAY",
+      autoProvisioned: true,
+      credentialProviderRef: null,
+      createdAt: now2,
+      updatedAt: now2,
+    };
+    registry.environmentToolDeployments.push(autoEtd);
+    console.log(`[ensureRegistry] Auto-created DEV ETD for LTD ${ltd.id} (${ltd.toolKey}) → ${autoEtd.id} [${autoEtd.deploymentStatus}]`);
   }
   fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2));
 }
@@ -3434,6 +3487,159 @@ async function handleApi(req, res, requestUrl) {
     return sendJson(res, 201, { projectToolGrant: grant });
   }
 
+  // POST /api/organizations/:orgId/logical-tools/:ltdId/deploy-to-gateway
+  // Deploys an APPROVED tool to the real AWS AgentCore Gateway for a given environment.
+  // Creates the Gateway if it doesn't exist, registers the tool as a target, adds Lambda
+  // resource-based policy, then updates the ETD with real ARNs and marks it ACTIVE.
+  if (req.method === "POST" && parts[1] === "organizations" && parts[2] && parts[3] === "logical-tools" && parts[4] && parts[5] === "deploy-to-gateway") {
+    const registry = readRegistry();
+    const orgId = parts[2];
+    const ltdId = parts[4];
+    const body = await readBody(req);
+    const { environmentId } = body;
+
+    const ltd = (registry.logicalToolDefinitions || []).find((l) => l.id === ltdId && l.organizationId === orgId);
+    if (!ltd) return sendJson(res, 404, { error: "Tool not found." });
+    if (ltd.approvalStatus !== "APPROVED") return sendJson(res, 409, { error: "Tool must be APPROVED before deploying to Gateway." });
+
+    // Allow caller to supply/override the source ARN and API stage at deploy time
+    // (useful for API_GATEWAY tools registered without an ARN)
+    const arnOverride   = body.sourceResourceArn?.trim() || null;
+    const stageOverride = body.apiStage?.trim() || null;
+
+    // Resolve the target environment — default to DEV if not specified
+    const orgEnvs = (registry.organizationEnvironments || []).filter((e) => e.organizationId === orgId);
+    const targetEnv = environmentId
+      ? orgEnvs.find((e) => e.id === environmentId)
+      : orgEnvs.find((e) => !e.isProduction && e.promotionOrder === 0);
+    if (!targetEnv) return sendJson(res, 422, { error: "No matching environment found for this organization." });
+
+    // Find the account connection for this environment
+    const conn = (registry.awsAccountConnections || []).find(
+      (c) => c.organizationId === orgId && c.environmentId === targetEnv.id && c.status !== "DISCONNECTED"
+    );
+    if (!conn) return sendJson(res, 422, { error: "No active AWS account connection for this environment. Connect an account first." });
+
+    // Find or create the ETD for this env
+    let etd = (registry.environmentToolDeployments || []).find(
+      (e) => e.logicalToolDefinitionId === ltdId && e.environmentId === targetEnv.id
+    );
+    if (!etd) {
+      etd = {
+        id: `etd-${ltdId}-${targetEnv.id}-${Date.now()}`,
+        organizationId: orgId,
+        logicalToolDefinitionId: ltdId,
+        environmentId: targetEnv.id,
+        awsAccountConnectionId: conn.id,
+        sourceResourceArn: null,
+        gatewayArn: null,
+        gatewayTargetId: null,
+        mcpToolName: ltd.toolKey,
+        deploymentStatus: "DEPLOYING",
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      registry.environmentToolDeployments = registry.environmentToolDeployments || [];
+      registry.environmentToolDeployments.push(etd);
+    }
+
+    // Backfill sourceResourceArn if missing — try TRR, then LTD itself, then discovered resources by name match
+    if (!etd.sourceResourceArn) {
+      // 1. Check TRR
+      const trr = (registry.toolRegistrationRequests || []).find(
+        (t) => t.logicalToolDefinitionId === ltdId && t.sourceResourceArn
+      );
+      if (trr) {
+        etd.sourceResourceArn = trr.sourceResourceArn;
+      } else {
+        // 2. Try discovered resources — match by toolKey / displayName against resource name
+        const toolNameVariants = [
+          ltd.toolKey,
+          ltd.toolKey.replace(/_/g, "-"),
+          (ltd.displayName || "").toLowerCase().replace(/[^a-z0-9]/g, "-"),
+        ].filter(Boolean);
+        const discovered = (registry.discoveredResources || []).find((r) =>
+          r.organizationId === orgId &&
+          toolNameVariants.some((v) => (r.resourceName || "").toLowerCase().includes(v) || v.includes((r.resourceName || "").toLowerCase()))
+        );
+        if (discovered?.resourceArn) {
+          etd.sourceResourceArn = discovered.resourceArn;
+          console.log(`[deploy-to-gateway] Resolved sourceArn from discovered resource: ${discovered.resourceArn}`);
+        } else {
+          // 3. For LAMBDA type — build canonical ARN from account + function name derived from toolKey
+          if (ltd.sourceType === "LAMBDA" && conn.awsAccountId) {
+            const region = conn.region || conn.enabledRegions?.[0] || "us-east-1";
+            const fnName = ltd.toolKey.replace(/_/g, "-");
+            etd.sourceResourceArn = `arn:aws:lambda:${region}:${conn.awsAccountId}:function:${fnName}`;
+            console.log(`[deploy-to-gateway] Derived Lambda ARN by convention: ${etd.sourceResourceArn}`);
+          }
+        }
+      }
+    }
+
+    // Apply caller-supplied overrides before deployment
+    if (arnOverride)   etd.sourceResourceArn = arnOverride;
+    if (stageOverride) etd.apiStage           = stageOverride;
+
+    etd.deploymentStatus = "DEPLOYING";
+    etd.updatedAt = now();
+    writeRegistry(registry);
+
+    try {
+      const discoveredResources = registry.discoveredResources || [];
+      const result = await deployTool({ ltd, etd, conn, discoveredResources });
+
+      // Persist real Gateway ARN/URL back onto the connection record
+      const connIdx = registry.awsAccountConnections.findIndex((c) => c.id === conn.id);
+      if (connIdx !== -1) {
+        registry.awsAccountConnections[connIdx].agentCoreGatewayArn = result.gatewayArn;
+        registry.awsAccountConnections[connIdx].agentCoreGatewayId  = result.gatewayId;
+        registry.awsAccountConnections[connIdx].agentCoreGatewayUrl = result.gatewayUrl;
+      }
+
+      // Update the ETD with real deployment details
+      const etdIdx = registry.environmentToolDeployments.findIndex((e) => e.id === etd.id);
+      if (etdIdx !== -1) {
+        registry.environmentToolDeployments[etdIdx] = {
+          ...registry.environmentToolDeployments[etdIdx],
+          gatewayArn:      result.gatewayArn,
+          gatewayId:       result.gatewayId,
+          gatewayUrl:      result.gatewayUrl,
+          gatewayTargetId:   result.targetId,
+          mcpToolName:       result.mcpToolName,
+          wrapperLambdaArn:  result.wrapperLambdaArn || null,
+          deploymentStatus:  result.status === "CREATING" ? "DEPLOYING" : "ACTIVE",
+          lastDeployedAt:    now(),
+          updatedAt:         now(),
+        };
+      }
+
+      addAudit(registry, "tool.gateway.deployed", { ltdId, envId: targetEnv.id, gatewayId: result.gatewayId, targetId: result.targetId });
+      writeRegistry(registry);
+
+      return sendJson(res, 200, {
+        message: "Tool deployed to AgentCore Gateway successfully.",
+        gatewayArn:  result.gatewayArn,
+        gatewayUrl:  result.gatewayUrl,
+        targetId:    result.targetId,
+        mcpToolName: result.mcpToolName,
+        status:      result.status,
+        etd:         registry.environmentToolDeployments[etdIdx] || etd,
+      });
+    } catch (err) {
+      // Mark ETD as failed so UI shows the error
+      const etdIdx = registry.environmentToolDeployments.findIndex((e) => e.id === etd.id);
+      if (etdIdx !== -1) {
+        registry.environmentToolDeployments[etdIdx].deploymentStatus = "FAILED";
+        registry.environmentToolDeployments[etdIdx].lastErrorMessage = err.message;
+        registry.environmentToolDeployments[etdIdx].updatedAt = now();
+      }
+      writeRegistry(registry);
+      console.error("[deploy-to-gateway] Error:", err.message);
+      return sendJson(res, 502, { error: err.message });
+    }
+  }
+
   // GET /api/projects/:pid/available-org-tools — org tools approved + DEV ETD exists, not yet enabled for this project
   if (req.method === "GET" && parts[1] === "projects" && parts[2] && parts[3] === "available-org-tools") {
     const registry = readRegistry();
@@ -3453,10 +3659,11 @@ async function handleApi(req, res, requestUrl) {
     );
     if (!devEnv) return sendJson(res, 200, { availableTools: [] });
 
-    // All active DEV ETDs
+    // DEV ETDs that are deployed or pending gateway (ACTIVE, PENDING_GATEWAY, NOT_DEPLOYED, STALE)
+    const DEV_USABLE_STATUSES = new Set(["ACTIVE", "PENDING_GATEWAY", "NOT_DEPLOYED", "STALE"]);
     const devEtdByLtdId = {};
     for (const etd of (registry.environmentToolDeployments || [])) {
-      if (etd.environmentId === devEnv.id && etd.deploymentStatus === "ACTIVE") {
+      if (etd.environmentId === devEnv.id && DEV_USABLE_STATUSES.has(etd.deploymentStatus)) {
         devEtdByLtdId[etd.logicalToolDefinitionId] = etd;
       }
     }
@@ -3502,10 +3709,11 @@ async function handleApi(req, res, requestUrl) {
     );
     if (!devEnv) return sendJson(res, 422, { error: "No DEV environment configured for this organization." });
 
+    const USABLE = new Set(["ACTIVE", "PENDING_GATEWAY", "NOT_DEPLOYED", "STALE"]);
     const devEtd = (registry.environmentToolDeployments || []).find(
-      (e) => e.logicalToolDefinitionId === logicalToolDefinitionId && e.environmentId === devEnv.id && e.deploymentStatus === "ACTIVE"
+      (e) => e.logicalToolDefinitionId === logicalToolDefinitionId && e.environmentId === devEnv.id && USABLE.has(e.deploymentStatus)
     );
-    if (!devEtd) return sendJson(res, 409, { error: "Tool does not have an active DEV deployment yet." });
+    if (!devEtd) return sendJson(res, 409, { error: "Tool does not have a DEV deployment record yet. Re-approve the tool to trigger auto-deployment." });
 
     const existing = (registry.projectToolGrants || []).find(
       (g) => g.logicalToolDefinitionId === logicalToolDefinitionId && g.projectId === pid && g.environmentId === devEnv.id && g.grantStatus === "ACTIVE"

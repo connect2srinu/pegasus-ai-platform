@@ -1,6 +1,9 @@
 import { PROJECT_IDS, mockRuns, AGENT_TYPES } from "./constants.js";
 
 export function projectId(project) {
+  if (!project) return "";
+  // Accept a project object { id, name } or a plain name string
+  if (typeof project === "object") return project.id || "";
   return PROJECT_IDS[project] || project.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 

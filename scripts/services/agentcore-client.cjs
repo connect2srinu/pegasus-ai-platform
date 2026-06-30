@@ -86,11 +86,12 @@ async function pollUntil(fn, isReady, { intervalMs = 4000, maxAttempts = 30, lab
  */
 async function uploadAgentCode(bucket, s3Key, body) {
   const s3 = makeS3Client();
+  const isZip = s3Key.endsWith(".zip");
   await s3.send(new PutObjectCommand({
     Bucket: bucket,
     Key: s3Key,
     Body: typeof body === "string" ? Buffer.from(body, "utf8") : body,
-    ContentType: "text/x-python",
+    ContentType: isZip ? "application/zip" : "text/x-python",
   }));
   return { bucket, s3Key };
 }
@@ -139,13 +140,34 @@ async function createAgentRuntime({
     ...(Object.keys(environmentVariables).length && { environmentVariables }),
   };
 
-  const response = await client.send(new CreateAgentRuntimeCommand(input));
-  return {
-    agentRuntimeId: response.agentRuntimeId,
-    agentRuntimeArn: response.agentRuntimeArn,
-    status: response.status || "CREATING",
-    workloadIdentityDetails: response.workloadIdentityDetails,
-  };
+  try {
+    const response = await client.send(new CreateAgentRuntimeCommand(input));
+    return {
+      agentRuntimeId: response.agentRuntimeId,
+      agentRuntimeArn: response.agentRuntimeArn,
+      status: response.status || "CREATING",
+      workloadIdentityDetails: response.workloadIdentityDetails,
+    };
+  } catch (err) {
+    // Runtime with this name already exists — delete it and recreate with fresh code
+    if (err.message?.includes("already exists")) {
+      console.log(`[agentcore-client] Runtime '${name}' already exists — deleting for fresh deploy`);
+      const all = await listAgentRuntimes();
+      const existing = all.find((r) => r.agentRuntimeName === name);
+      if (existing) {
+        console.log(`[agentcore-client] Deleting runtime ${existing.agentRuntimeId}…`);
+        await deleteAgentRuntime(existing.agentRuntimeId);
+        console.log(`[agentcore-client] Deleted. Recreating runtime '${name}'…`);
+        const retry = await makeControlClient().send(new CreateAgentRuntimeCommand(input));
+        return {
+          agentRuntimeId: retry.agentRuntimeId,
+          agentRuntimeArn: retry.agentRuntimeArn,
+          status: retry.status || "CREATING",
+        };
+      }
+    }
+    throw err;
+  }
 }
 
 /**
@@ -170,11 +192,23 @@ async function getAgentRuntime(agentRuntimeId) {
 }
 
 /**
- * Delete an AgentCore Runtime.
+ * Delete an AgentCore Runtime and wait until it is gone.
  */
 async function deleteAgentRuntime(agentRuntimeId) {
   const client = makeControlClient();
-  return client.send(new DeleteAgentRuntimeCommand({ agentRuntimeId }));
+  await client.send(new DeleteAgentRuntimeCommand({ agentRuntimeId }));
+  // Poll until the runtime is gone (404 or DELETED status)
+  for (let i = 0; i < 30; i++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    try {
+      const r = await client.send(new GetAgentRuntimeCommand({ agentRuntimeId }));
+      const s = r.status || r.agentRuntimeStatus || "";
+      if (s === "DELETED" || s === "DELETE_COMPLETE") return;
+    } catch (e) {
+      if (e.name === "ResourceNotFoundException" || e.$metadata?.httpStatusCode === 404) return;
+    }
+  }
+  throw new Error(`Runtime ${agentRuntimeId} did not finish deleting after 2.5 min.`);
 }
 
 /**
@@ -196,54 +230,65 @@ async function listAgentRuntimes() {
  */
 async function createRuntimeEndpoint(agentRuntimeId, endpointName) {
   const client = makeControlClient();
-  const response = await client.send(new CreateAgentRuntimeEndpointCommand({
-    agentRuntimeId,
-    endpointName,
-  }));
-  return {
-    agentRuntimeEndpointId: response.agentRuntimeEndpointId,
-    agentRuntimeEndpointArn: response.agentRuntimeEndpointArn,
-    liveVersion: response.liveVersion,
-    status: response.status || "CREATING",
-  };
+  try {
+    const response = await client.send(new CreateAgentRuntimeEndpointCommand({
+      agentRuntimeId,
+      name: endpointName,
+    }));
+    // SDK uses the endpoint name as the stable identifier; agentRuntimeEndpointId may be undefined.
+    return {
+      agentRuntimeEndpointId: response.agentRuntimeEndpointId || endpointName,
+      agentRuntimeEndpointArn: response.agentRuntimeEndpointArn,
+      liveVersion: response.liveVersion,
+      status: response.status || "CREATING",
+    };
+  } catch (err) {
+    // Endpoint already exists (e.g. runtime was reused) — return name as identifier and let polling confirm READY
+    if (err.message?.includes("already exists")) {
+      console.log(`[agentcore-client] Endpoint '${endpointName}' already exists — reusing`);
+      return { agentRuntimeEndpointId: endpointName, status: "CREATING" };
+    }
+    throw err;
+  }
 }
 
 /**
  * Poll GetAgentRuntimeEndpoint until status = READY.
+ * The SDK requires endpointName (the name you supplied at creation), not a generated ID.
  */
-async function waitForEndpointReady(agentRuntimeId, agentRuntimeEndpointId, { intervalMs = 5000, maxAttempts = 36 } = {}) {
+async function waitForEndpointReady(agentRuntimeId, endpointName, { intervalMs = 5000, maxAttempts = 36 } = {}) {
   const client = makeControlClient();
   return pollUntil(
-    () => client.send(new GetAgentRuntimeEndpointCommand({ agentRuntimeId, agentRuntimeEndpointId })),
+    () => client.send(new GetAgentRuntimeEndpointCommand({ agentRuntimeId, endpointName })),
     (status) => status === "READY",
-    { intervalMs, maxAttempts, label: `Endpoint ${agentRuntimeEndpointId}` }
+    { intervalMs, maxAttempts, label: `Endpoint ${endpointName}` }
   );
 }
 
 /**
- * Get current status of a Runtime Endpoint.
+ * Get current status of a Runtime Endpoint by its name.
  */
-async function getRuntimeEndpoint(agentRuntimeId, agentRuntimeEndpointId) {
+async function getRuntimeEndpoint(agentRuntimeId, endpointName) {
   const client = makeControlClient();
-  return client.send(new GetAgentRuntimeEndpointCommand({ agentRuntimeId, agentRuntimeEndpointId }));
+  return client.send(new GetAgentRuntimeEndpointCommand({ agentRuntimeId, endpointName }));
 }
 
 // ── Invocation ────────────────────────────────────────────────────────────────
 
 /**
  * Invoke an AgentCore Runtime via its endpoint.
- * @param {string} agentRuntimeId
- * @param {string} agentRuntimeEndpointId   "DEFAULT" is valid for single-endpoint runtimes
- * @param {object} payload                  The input payload to send to the agent
+ * @param {string} agentRuntimeArn   Full ARN of the runtime (required by InvokeAgentRuntimeCommand)
+ * @param {string} endpointName      The endpoint name used at creation (SDK HTTP label)
+ * @param {object} payload           The input payload to send to the agent
  * @returns {Promise<{output, sessionId, httpStatusCode}>}
  */
-async function invokeAgentRuntime(agentRuntimeId, agentRuntimeEndpointId, payload) {
+async function invokeAgentRuntime(agentRuntimeArn, endpointName, payload) {
   const client = makeDataClient();
 
   const bodyStr = typeof payload === "string" ? payload : JSON.stringify(payload);
   const response = await client.send(new InvokeAgentRuntimeCommand({
-    agentRuntimeId,
-    agentRuntimeEndpointId,
+    agentRuntimeArn,
+    endpointName,
     payload: bodyStr,
   }));
 
@@ -292,7 +337,7 @@ async function invokeAgentRuntime(agentRuntimeId, agentRuntimeEndpointId, payloa
  */
 async function deployAgent({
   runtimeName, roleArn, bucket, s3Prefix, agentCode, entryFileName = "agent.py",
-  entryPoint = ["python", "agent.py"], pythonRuntime = "PYTHON_3_12",
+  entryPoint = ["harness.py"], pythonRuntime = "PYTHON_3_12",
   description, environmentVariables = {}, onLog = () => {},
 }) {
   const log = (msg) => { console.log(`[agentcore-client] ${msg}`); onLog(`[${new Date().toISOString()}] ${msg}`); };

@@ -1,0 +1,1138 @@
+<mxfile host="app.diagrams.net" modified="2026-06-30T00:00:00.000Z" agent="Claude" version="21.0.0" type="device">
+  <diagram id="page1-overview" name="Platform Overview">
+    <mxGraphModel dx="1422" dy="762" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="Guardian AI Platform — Architecture Overview" style="text;html=1;fontSize=22;fontStyle=1;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="1000" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Organization → Project → Agent hierarchy with AWS Bedrock AgentCore" style="text;html=1;fontSize=13;align=center;fillColor=none;strokeColor=none;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="300" y="58" width="1000" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- ORG LAYER -->
+        <mxCell id="org-bg" value="" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;opacity=50;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="1560" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="org-label" value="Organization Layer (RBAC)" style="text;html=1;fontSize=13;fontStyle=1;fillColor=none;strokeColor=none;fontColor=#2d6a2d;" vertex="1" parent="1">
+          <mxGeometry x="55" y="108" width="220" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="org-box" value="&lt;b&gt;Organization&lt;/b&gt;&lt;br&gt;(e.g. Pegasus Corp)" style="rounded=1;fillColor=#82b366;strokeColor=#4d7a32;fontColor=#ffffff;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="140" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="proj1-box" value="&lt;b&gt;Project A&lt;/b&gt;&lt;br&gt;Claims Team" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="140" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="proj2-box" value="&lt;b&gt;Project B&lt;/b&gt;&lt;br&gt;Payments Team" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="490" y="140" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="proj3-box" value="&lt;b&gt;Project C&lt;/b&gt;&lt;br&gt;Policy Team" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="660" y="140" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="roles-box" value="Roles: ORG_ADMIN | PROJECT_ADMIN | MEMBER | VIEWER" style="rounded=1;fillColor=#f9f9f9;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="870" y="145" width="360" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="env-box" value="Environments: DEV | STAGING | PROD" style="rounded=1;fillColor=#f9f9f9;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="145" width="300" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ARROWS org → project -->
+        <mxCell id="arr-org-p1" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#82b366;" edge="1" source="org-box" target="proj1-box" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arr-org-p2" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#82b366;" edge="1" source="org-box" target="proj2-box" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="arr-org-p3" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#82b366;" edge="1" source="org-box" target="proj3-box" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- CONTROL PLANE -->
+        <mxCell id="cp-bg" value="" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;opacity=50;" vertex="1" parent="1">
+          <mxGeometry x="40" y="250" width="760" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="cp-label" value="Control Plane (Guardian Backend — port 4201)" style="text;html=1;fontSize=13;fontStyle=1;fillColor=none;strokeColor=none;fontColor=#5a3d72;" vertex="1" parent="1">
+          <mxGeometry x="55" y="258" width="380" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cp-server" value="&lt;b&gt;server.cjs&lt;/b&gt;&lt;br&gt;HTTP API / Router&lt;br&gt;Provider-Aware" style="rounded=1;fillColor=#9673a6;strokeColor=#6a3f8f;fontColor=#ffffff;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="290" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="cp-db" value="&lt;b&gt;DB Layer&lt;/b&gt;&lt;br&gt;SQLite (mock)&lt;br&gt;Postgres (local/dev)" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="280" y="290" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="cp-seed" value="&lt;b&gt;Seed / Schema&lt;/b&gt;&lt;br&gt;Idempotent&lt;br&gt;schema.sql" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="480" y="290" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cp-gw-dep" value="&lt;b&gt;gateway-deployer.cjs&lt;/b&gt;&lt;br&gt;ensureGateway →&lt;br&gt;CreateGatewayTarget" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="390" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="cp-ac-client" value="&lt;b&gt;agentcore-client.cjs&lt;/b&gt;&lt;br&gt;S3 → CreateRuntime&lt;br&gt;→ CreateEndpoint" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="290" y="390" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="cp-inv" value="&lt;b&gt;inventory-scanner.cjs&lt;/b&gt;&lt;br&gt;Lambda / API GW&lt;br&gt;Discovery" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="500" y="390" width="180" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cp-strands" value="&lt;b&gt;strands-generator.cjs&lt;/b&gt;&lt;br&gt;Generate Python&lt;br&gt;Strands agent code" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="490" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="cp-wrap-dep" value="&lt;b&gt;wrapper-deployer.cjs&lt;/b&gt;&lt;br&gt;ZIP + deploy&lt;br&gt;API GW wrapper λ" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="290" y="490" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="cp-providers" value="&lt;b&gt;Providers&lt;/b&gt;&lt;br&gt;identity / aws /&lt;br&gt;agentcore / llm" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="500" y="490" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- GOVERNANCE -->
+        <mxCell id="gov-bg" value="" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;opacity=50;" vertex="1" parent="1">
+          <mxGeometry x="840" y="250" width="420" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="gov-label" value="Governance &amp; Approval Flows" style="text;html=1;fontSize=13;fontStyle=1;fillColor=none;strokeColor=none;fontColor=#7d5a00;" vertex="1" parent="1">
+          <mxGeometry x="855" y="258" width="280" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gov-tool" value="&lt;b&gt;Tool Lifecycle&lt;/b&gt;&lt;br&gt;PENDING → APPROVED&lt;br&gt;→ ACTIVE → granted" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="870" y="290" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="gov-agent" value="&lt;b&gt;Agent Lifecycle&lt;/b&gt;&lt;br&gt;SUBMITTED → dual&lt;br&gt;approval → APPROVED" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="290" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gov-appr1" value="&lt;b&gt;Business Owner&lt;/b&gt;&lt;br&gt;Approval" style="rounded=1;fillColor=#d6b656;strokeColor=#a08020;fontColor=#ffffff;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="870" y="400" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="gov-appr2" value="&lt;b&gt;Platform Admin&lt;/b&gt;&lt;br&gt;Approval" style="rounded=1;fillColor=#d6b656;strokeColor=#a08020;fontColor=#ffffff;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="400" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gov-wizard" value="&lt;b&gt;Author Wizard (6 steps)&lt;/b&gt;&lt;br&gt;Template → Prompt → Tools&lt;br&gt;→ Config → Deploy → Review" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="870" y="490" width="360" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gov-risk" value="Risk Tier: low | medium | high | critical" style="rounded=1;fillColor=#f9f9f9;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="870" y="590" width="360" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- DEV AWS -->
+        <mxCell id="dev-bg" value="" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;opacity=50;" vertex="1" parent="1">
+          <mxGeometry x="40" y="650" width="600" height="420" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-label" value="DEV AWS Account" style="text;html=1;fontSize=13;fontStyle=1;fillColor=none;strokeColor=none;fontColor=#1a4a8f;" vertex="1" parent="1">
+          <mxGeometry x="55" y="658" width="200" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- AWS icons via shapes -->
+        <mxCell id="dev-lambda" value="Lambda Functions&lt;br&gt;(payment-post-fn,&lt;br&gt;claims-lookup-fn…)" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda_function;fillColor=#E7157B;strokeColor=#ffffff;fontColor=#232F3E;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="80" y="700" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-lambda-lbl" value="Lambda" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="60" y="764" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-apigw" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;fillColor=#E7157B;strokeColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="200" y="700" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-apigw-lbl" value="API Gateway" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="175" y="764" width="110" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-s3" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;fillColor=#7AA116;strokeColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="700" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-s3-lbl" value="S3 Artifacts" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="295" y="764" width="110" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-iam" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.role;fillColor=#DD344C;strokeColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="700" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-iam-lbl" value="IAM Roles" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="420" y="764" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-gw" value="AgentCore&lt;br&gt;Gateway" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#ffffff;fontColor=#232F3E;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="820" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-gw-lbl" value="AgentCore Gateway" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="50" y="884" width="130" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-runtime" value="AgentCore&lt;br&gt;Runtime" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#ffffff;fontColor=#232F3E;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="200" y="820" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-runtime-lbl" value="AgentCore Runtime" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="170" y="884" width="130" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-cw" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudwatch;fillColor=#E7157B;strokeColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="820" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-cw-lbl" value="CloudWatch Logs" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="290" y="884" width="130" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-wrapper" value="guardian-apigw-*&lt;br&gt;Wrapper λ" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="80" y="930" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-deploy-role" value="DeploymentRole&lt;br&gt;GuardianWrapperLambdaRole" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="260" y="930" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- PROD AWS -->
+        <mxCell id="prod-bg" value="" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;opacity=50;" vertex="1" parent="1">
+          <mxGeometry x="680" y="650" width="580" height="420" as="geometry" />
+        </mxCell>
+        <mxCell id="prod-label" value="PROD AWS Account" style="text;html=1;fontSize=13;fontStyle=1;fillColor=none;strokeColor=none;fontColor=#8a4000;" vertex="1" parent="1">
+          <mxGeometry x="695" y="658" width="200" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="prod-lambda" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda_function;fillColor=#E7157B;strokeColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="720" y="700" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="prod-lambda-lbl" value="Lambda (PROD)" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="695" y="764" width="115" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="prod-apigw" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;fillColor=#E7157B;strokeColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="840" y="700" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="prod-apigw-lbl" value="API GW (PROD)" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="815" y="764" width="115" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="prod-gw" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="960" y="700" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="prod-gw-lbl" value="AgentCore GW (PROD)" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="925" y="764" width="140" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="prod-runtime" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="700" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="prod-runtime-lbl" value="AgentCore Runtime (PROD)" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1065" y="764" width="150" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="prod-promote" value="&lt;b&gt;Promotion&lt;/b&gt;&lt;br&gt;Logical definition promoted&lt;br&gt;(no ARN copy-paste)" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="820" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="prod-policy" value="Deployment blocked&lt;br&gt;until approved" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="980" y="820" width="220" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Promotion arrow -->
+        <mxCell id="arr-promote" value="Promote" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d79b00;strokeWidth=2;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" source="dev-bg" target="prod-bg" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Control plane → DEV -->
+        <mxCell id="arr-cp-dev" value="Deploy" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;strokeWidth=2;" edge="1" source="cp-bg" target="dev-bg" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Frontend -->
+        <mxCell id="fe-bg" value="" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;opacity=50;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="250" width="300" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-label" value="Frontend (React 19 + Vite)" style="text;html=1;fontSize=13;fontStyle=1;fillColor=none;strokeColor=none;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="258" width="280" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fe-org" value="Org Detail&lt;br&gt;(Projects, Members,&lt;br&gt;Accounts, Config)" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="290" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-registry" value="Org Tool Registry&lt;br&gt;(Approve, Deploy,&lt;br&gt;Grant)" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="375" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-approvals" value="Approvals Queue&lt;br&gt;(tool_registration +&lt;br&gt;agent_approval)" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="460" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="fe-author" value="Author Wizard&lt;br&gt;(6-step agent builder)" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="545" width="260" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Frontend → Control Plane -->
+        <mxCell id="arr-fe-cp" value="REST API" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#666666;strokeWidth=2;" edge="1" source="fe-bg" target="cp-bg" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="leg-bg" value="" style="rounded=1;fillColor=#f9f9f9;strokeColor=#333333;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="650" width="300" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="leg-title" value="Legend" style="text;html=1;fontSize=13;fontStyle=1;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="658" width="280" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" value="" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="690" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1t" value="Organization Layer" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="690" width="220" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" value="" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="720" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2t" value="Control Plane" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="720" width="220" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3" value="" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="750" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3t" value="Governance / Approval" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="750" width="220" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4" value="" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="780" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4t" value="DEV AWS Account" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="780" width="220" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5" value="" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="810" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5t" value="PROD AWS Account" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="810" width="220" height="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="page2-tool-lifecycle" name="Tool Lifecycle">
+    <mxGraphModel dx="1422" dy="762" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="tl-title" value="Tool Lifecycle — Registration to Agent Usage" style="text;html=1;fontSize=20;fontStyle=1;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="1000" height="36" as="geometry" />
+        </mxCell>
+
+        <!-- Steps row 1 -->
+        <!-- Step 1: Register -->
+        <mxCell id="s1-bg" value="" style="rounded=1;fillColor=#f5f5f5;strokeColor=#999999;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="180" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="s1-num" value="1" style="ellipse;fillColor=#999999;strokeColor=#666666;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="110" y="110" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="s1-title" value="&lt;b&gt;Register Tool&lt;/b&gt;" style="text;html=1;fontSize=13;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="50" y="155" width="160" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="s1-body" value="Org Admin discovers&lt;br&gt;Lambda / API Gateway&lt;br&gt;via inventory scan.&lt;br&gt;POST /logical-tools&lt;br&gt;status: PENDING" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="50" y="178" width="160" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arr1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#999999;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="220" y="190" as="sourcePoint" />
+            <mxPoint x="270" y="190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Step 2: Approval Request -->
+        <mxCell id="s2-bg" value="" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="270" y="100" width="180" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="s2-num" value="2" style="ellipse;fillColor=#d6b656;strokeColor=#a08020;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="110" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="s2-title" value="&lt;b&gt;Approval Request&lt;/b&gt;" style="text;html=1;fontSize=13;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="278" y="155" width="164" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="s2-body" value="Auto-creates&lt;br&gt;tool_approval_request&lt;br&gt;row.&lt;br&gt;Org Admin reviews&lt;br&gt;in Approvals queue." style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="278" y="178" width="164" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arr2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="450" y="190" as="sourcePoint" />
+            <mxPoint x="500" y="190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Step 3: Approved -->
+        <mxCell id="s3-bg" value="" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="500" y="100" width="180" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="s3-num" value="3" style="ellipse;fillColor=#82b366;strokeColor=#4d7a32;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="110" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="s3-title" value="&lt;b&gt;APPROVED&lt;/b&gt;" style="text;html=1;fontSize=13;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="508" y="155" width="164" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="s3-body" value="approval_status = APPROVED&lt;br&gt;on logical_tool_definition.&lt;br&gt;&lt;br&gt;ETDs auto-provisioned&lt;br&gt;for all environments." style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="508" y="178" width="164" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arr3" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="680" y="190" as="sourcePoint" />
+            <mxPoint x="730" y="190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Step 4: Deploy to Gateway -->
+        <mxCell id="s4-bg" value="" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="730" y="100" width="180" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="s4-num" value="4" style="ellipse;fillColor=#6c8ebf;strokeColor=#3a6aaf;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="110" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="s4-title" value="&lt;b&gt;Deploy to Gateway&lt;/b&gt;" style="text;html=1;fontSize=13;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="738" y="155" width="164" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="s4-body" value="POST deploy-to-gateway.&lt;br&gt;ensureGateway →&lt;br&gt;CreateGatewayTarget.&lt;br&gt;LAMBDA: direct.&lt;br&gt;API_GW: wrapper λ." style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="738" y="178" width="164" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arr4" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="910" y="190" as="sourcePoint" />
+            <mxPoint x="960" y="190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Step 5: ACTIVE -->
+        <mxCell id="s5-bg" value="" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="960" y="100" width="180" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="s5-num" value="5" style="ellipse;fillColor=#82b366;strokeColor=#4d7a32;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="110" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="s5-title" value="&lt;b&gt;ACTIVE&lt;/b&gt;" style="text;html=1;fontSize=13;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="968" y="155" width="164" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="s5-body" value="deployment_status=ACTIVE&lt;br&gt;on ETD.&lt;br&gt;gateway_target_id stored.&lt;br&gt;MCP endpoint live." style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="968" y="178" width="164" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arr5" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1140" y="190" as="sourcePoint" />
+            <mxPoint x="1190" y="190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Step 6: Grant -->
+        <mxCell id="s6-bg" value="" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="100" width="180" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="s6-num" value="6" style="ellipse;fillColor=#9673a6;strokeColor=#6a3f8f;fontColor=#ffffff;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="110" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="s6-title" value="&lt;b&gt;Grant to Project&lt;/b&gt;" style="text;html=1;fontSize=13;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1198" y="155" width="164" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="s6-body" value="POST /grants&lt;br&gt;project_tool_grants&lt;br&gt;status=ACTIVE.&lt;br&gt;Appears in Author&lt;br&gt;Wizard tool picker." style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1198" y="178" width="164" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Status bar -->
+        <mxCell id="status-bar" value="PENDING → APPROVED → deploy-to-gateway → ACTIVE → granted to project" style="text;html=1;fontSize=14;fontStyle=1;align=center;fillColor=#f5f5f5;strokeColor=#999999;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="320" width="1330" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- API GW Special Path -->
+        <mxCell id="apigw-bg" value="" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="400" width="660" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="apigw-title" value="&lt;b&gt;API Gateway Tool Path (source_type = API_GATEWAY)&lt;/b&gt;" style="text;html=1;fontSize=13;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="50" y="408" width="640" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="apigw-s1" value="Discover API GW&lt;br&gt;in inventory" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="60" y="445" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="apigw-arr1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="470" as="sourcePoint" />
+            <mxPoint x="220" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="apigw-s2" value="wrapper-deployer.cjs&lt;br&gt;ZIP + deploy guardian-&lt;br&gt;apigw-* Lambda" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="220" y="445" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="apigw-arr2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="370" y="470" as="sourcePoint" />
+            <mxPoint x="410" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="apigw-s3" value="CreateGatewayTarget&lt;br&gt;→ wrapper λ ARN&lt;br&gt;as target" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="410" y="445" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="apigw-s4" value="At runtime: Gateway calls wrapper λ → wrapper proxies to API GW endpoint" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="60" y="510" width="620" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="apigw-note" value="Note: API GW must have a deployed stage for proxy calls to succeed" style="text;html=1;fontSize=11;align=center;fillColor=#f8cecc;strokeColor=#b85450;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="545" width="620" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Lambda direct path -->
+        <mxCell id="lambda-bg" value="" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="730" y="400" width="640" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="lambda-title" value="&lt;b&gt;Lambda Tool Path (source_type = LAMBDA)&lt;/b&gt;" style="text;html=1;fontSize=13;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="740" y="408" width="620" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="lambda-s1" value="Discover Lambda&lt;br&gt;in inventory" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="750" y="445" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lambda-arr1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="870" y="470" as="sourcePoint" />
+            <mxPoint x="920" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lambda-s2" value="Normalize ARN&lt;br&gt;function/name →&lt;br&gt;function:name" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="920" y="445" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lambda-arr2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1060" y="470" as="sourcePoint" />
+            <mxPoint x="1100" y="470" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lambda-s3" value="CreateGatewayTarget&lt;br&gt;→ Lambda ARN&lt;br&gt;direct target" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="445" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lambda-s4" value="addLambdaInvokePermission → bedrock-agentcore.amazonaws.com" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="750" y="500" width="600" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- Data model -->
+        <mxCell id="dm-bg" value="" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="660" width="1330" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="dm-title" value="&lt;b&gt;Data Model&lt;/b&gt;" style="text;html=1;fontSize=13;align=left;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="55" y="668" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="dm-ltd" value="&lt;b&gt;logical_tool_definitions&lt;/b&gt;&lt;br&gt;id, org_id, tool_key, display_name&lt;br&gt;source_type (LAMBDA|API_GATEWAY)&lt;br&gt;source_resource_arn, approval_status" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="60" y="695" width="280" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="dm-tar" value="&lt;b&gt;tool_approval_requests&lt;/b&gt;&lt;br&gt;id, ltd_id, requested_by&lt;br&gt;reviewed_by, status&lt;br&gt;(PENDING|APPROVED|REJECTED)" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="360" y="695" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="dm-etd" value="&lt;b&gt;environment_tool_deployments&lt;/b&gt;&lt;br&gt;id, ltd_id, environment_id&lt;br&gt;gateway_target_id, deployment_status&lt;br&gt;wrapper_lambda_arn, api_gateway_url" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="640" y="695" width="300" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="dm-ptg" value="&lt;b&gt;project_tool_grants&lt;/b&gt;&lt;br&gt;id, project_id, ltd_id&lt;br&gt;granted_by, status (ACTIVE)&lt;br&gt;granted_at" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="960" y="695" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="dm-arr1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#999999;" edge="1" source="dm-ltd" target="dm-tar" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dm-arr2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#999999;" edge="1" source="dm-ltd" target="dm-etd" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dm-arr3" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#999999;" edge="1" source="dm-ltd" target="dm-ptg" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="page3-agent-lifecycle" name="Agent Lifecycle">
+    <mxGraphModel dx="1422" dy="762" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="al-title" value="Agent Lifecycle — Author to Deployed" style="text;html=1;fontSize=20;fontStyle=1;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="1000" height="36" as="geometry" />
+        </mxCell>
+
+        <!-- Author Wizard 6 Steps -->
+        <mxCell id="wiz-bg" value="" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;opacity=70;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="1320" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="wiz-title" value="Author Wizard (6 Steps)" style="text;html=1;fontSize=14;fontStyle=1;fillColor=none;strokeColor=none;fontColor=#5a3d72;" vertex="1" parent="1">
+          <mxGeometry x="55" y="88" width="250" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="wiz1" value="1&lt;br&gt;&lt;b&gt;Template&lt;/b&gt;" style="rounded=1;fillColor=#9673a6;strokeColor=#6a3f8f;fontColor=#ffffff;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="120" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="wiz1d" value="Pick agent&lt;br&gt;template" style="text;html=1;fontSize=10;align=center;fillColor=none;strokeColor=none;fontColor=#5a3d72;" vertex="1" parent="1">
+          <mxGeometry x="60" y="158" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="wiz-a1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="165" as="sourcePoint" />
+            <mxPoint x="210" y="165" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wiz2" value="2&lt;br&gt;&lt;b&gt;Prompt&lt;/b&gt;" style="rounded=1;fillColor=#9673a6;strokeColor=#6a3f8f;fontColor=#ffffff;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="210" y="120" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="wiz2d" value="Name + system&lt;br&gt;prompt (required)" style="text;html=1;fontSize=10;align=center;fillColor=none;strokeColor=none;fontColor=#5a3d72;" vertex="1" parent="1">
+          <mxGeometry x="210" y="158" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="wiz-a2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="165" as="sourcePoint" />
+            <mxPoint x="360" y="165" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wiz3" value="3&lt;br&gt;&lt;b&gt;Tools&lt;/b&gt;" style="rounded=1;fillColor=#9673a6;strokeColor=#6a3f8f;fontColor=#ffffff;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="360" y="120" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="wiz3d" value="Select from active&lt;br&gt;project grants only" style="text;html=1;fontSize=10;align=center;fillColor=none;strokeColor=none;fontColor=#5a3d72;" vertex="1" parent="1">
+          <mxGeometry x="360" y="158" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="wiz-a3" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="480" y="165" as="sourcePoint" />
+            <mxPoint x="510" y="165" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wiz4" value="4&lt;br&gt;&lt;b&gt;Config&lt;/b&gt;" style="rounded=1;fillColor=#9673a6;strokeColor=#6a3f8f;fontColor=#ffffff;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="510" y="120" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="wiz4d" value="Model, risk tier,&lt;br&gt;data class" style="text;html=1;fontSize=10;align=center;fillColor=none;strokeColor=none;fontColor=#5a3d72;" vertex="1" parent="1">
+          <mxGeometry x="510" y="158" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="wiz-a4" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="630" y="165" as="sourcePoint" />
+            <mxPoint x="660" y="165" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wiz5" value="5&lt;br&gt;&lt;b&gt;Deploy&lt;/b&gt;" style="rounded=1;fillColor=#9673a6;strokeColor=#6a3f8f;fontColor=#ffffff;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="660" y="120" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="wiz5d" value="Generate Strands&lt;br&gt;code + manifest" style="text;html=1;fontSize=10;align=center;fillColor=none;strokeColor=none;fontColor=#5a3d72;" vertex="1" parent="1">
+          <mxGeometry x="660" y="158" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="wiz-a5" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="165" as="sourcePoint" />
+            <mxPoint x="810" y="165" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wiz6" value="6&lt;br&gt;&lt;b&gt;Review&lt;/b&gt;" style="rounded=1;fillColor=#9673a6;strokeColor=#6a3f8f;fontColor=#ffffff;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="810" y="120" width="120" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="wiz6d" value="Health check /health&lt;br&gt;Submit → PUBLISH" style="text;html=1;fontSize=10;align=center;fillColor=none;strokeColor=none;fontColor=#5a3d72;" vertex="1" parent="1">
+          <mxGeometry x="810" y="158" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="wiz-a6" value="POST /api/agents/publish" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="165" as="sourcePoint" />
+            <mxPoint x="990" y="165" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="wiz-result" value="Agent: SUBMITTED&lt;br&gt;2 approval tasks created" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="990" y="130" width="180" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Approval Flow -->
+        <mxCell id="appr-bg" value="" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;opacity=70;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="1320" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="appr-title" value="Dual Approval Gate" style="text;html=1;fontSize=14;fontStyle=1;fillColor=none;strokeColor=none;fontColor=#7d5a00;" vertex="1" parent="1">
+          <mxGeometry x="55" y="288" width="250" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="appr-sub" value="SUBMITTED" style="rounded=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="320" width="130" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="appr-a1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="190" y="350" as="sourcePoint" />
+            <mxPoint x="240" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="appr-bo" value="&lt;b&gt;Business Owner&lt;/b&gt;&lt;br&gt;Approval&lt;br&gt;approver_type=&lt;br&gt;business_owner" style="rounded=1;fillColor=#d6b656;strokeColor=#a08020;fontColor=#ffffff;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="240" y="310" width="180" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="appr-a2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="355" as="sourcePoint" />
+            <mxPoint x="470" y="355" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="appr-pa" value="&lt;b&gt;Platform Admin&lt;/b&gt;&lt;br&gt;Approval&lt;br&gt;approver_type=&lt;br&gt;platform_admin" style="rounded=1;fillColor=#d6b656;strokeColor=#a08020;fontColor=#ffffff;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="470" y="310" width="180" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="appr-a3" value="both approved" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#82b366;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="650" y="355" as="sourcePoint" />
+            <mxPoint x="700" y="355" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="appr-approved" value="APPROVED" style="rounded=1;fillColor=#82b366;strokeColor=#4d7a32;fontColor=#ffffff;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="700" y="325" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="appr-reject" value="If any REJECTED →&lt;br&gt;agent status = REJECTED" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="240" y="420" width="240" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="appr-block" value="Deploy blocked until&lt;br&gt;status = APPROVED" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="900" y="325" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="appr-api" value="POST /api/approvals/:taskId/decision   taskCategory: agent_approval" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="55" y="435" width="700" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- Deploy Flow -->
+        <mxCell id="dep-bg" value="" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;opacity=70;" vertex="1" parent="1">
+          <mxGeometry x="40" y="520" width="1320" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="dep-title" value="AgentCore Runtime Deployment" style="text;html=1;fontSize=14;fontStyle=1;fillColor=none;strokeColor=none;fontColor=#1a4a8f;" vertex="1" parent="1">
+          <mxGeometry x="55" y="528" width="300" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dep1" value="1. Generate&lt;br&gt;Strands Python&lt;br&gt;agent.py" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="60" y="565" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="dep-a1" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="200" y="600" as="sourcePoint" />
+            <mxPoint x="230" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dep2" value="2. Upload to S3&lt;br&gt;agents/{id}/&lt;br&gt;{ver}/agent.py" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="230" y="565" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="dep-a2" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="370" y="600" as="sourcePoint" />
+            <mxPoint x="400" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dep3" value="3. CreateAgentRuntime&lt;br&gt;codeConfiguration.s3&lt;br&gt;→ poll READY" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="400" y="565" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="dep-a3" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="600" as="sourcePoint" />
+            <mxPoint x="590" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dep4" value="4. CreateAgentRuntimeEndpoint&lt;br&gt;networkMode=PUBLIC&lt;br&gt;→ poll READY" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="590" y="565" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="dep-a4" value="" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#6c8ebf;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="770" y="600" as="sourcePoint" />
+            <mxPoint x="800" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dep5" value="5. InvokeAgentRuntime&lt;br&gt;Command&lt;br&gt;→ response" style="rounded=1;fillColor=#82b366;strokeColor=#4d7a32;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="800" y="565" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dep-s3-icon" value="S3" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;fillColor=#7AA116;strokeColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="555" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="dep-bedrock-icon" value="AgentCore" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="555" width="50" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dep-timing" value="~3 min runtime creation + ~2 min endpoint creation (poll loop)" style="text;html=1;fontSize=11;align=center;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="660" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dep-aed" value="Stored in: agent_environment_deployments&lt;br&gt;(agent_core_agent_id, agent_core_endpoint_id, s3_code_location, deployment_status)" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="60" y="700" width="1280" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dep-role" value="IAM: AgentCoreExecutionRole" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="660" width="240" height="36" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="page4-deployment-promotion" name="Deployment and Promotion">
+    <mxGraphModel dx="1422" dy="762" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="dp-title" value="Deployment and Promotion — DEV to PROD" style="text;html=1;fontSize=20;fontStyle=1;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="1200" height="36" as="geometry" />
+        </mxCell>
+
+        <!-- DEV Account -->
+        <mxCell id="dev-acc-bg" value="" style="shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_account;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=3;opacity=60;verticalLabelPosition=top;verticalAlign=bottom;fontSize=14;fontStyle=1;fontColor=#1a4a8f;" vertex="1" label="DEV AWS Account" parent="1">
+          <mxGeometry x="40" y="80" width="680" height="860" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-conn" value="&lt;b&gt;AWS Account Connection&lt;/b&gt;&lt;br&gt;discovery_role_arn&lt;br&gt;deployment_role_arn&lt;br&gt;provisioning_role_arn&lt;br&gt;agent_core_gateway_id" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="130" width="220" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-disc" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda_function;fillColor=#E7157B;strokeColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="360" y="130" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-disc-lbl" value="Discovered&lt;br&gt;Lambda / API GW" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="330" y="183" width="110" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-apigw-icon" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;fillColor=#E7157B;strokeColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="500" y="130" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-apigw-icon-lbl" value="API Gateway" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="480" y="183" width="90" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-s3-icon" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;fillColor=#7AA116;strokeColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="80" y="280" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-s3-lbl" value="S3 Artifacts&lt;br&gt;pegasus-agent-artifacts-*" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="55" y="333" width="120" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-gw-icon" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="220" y="280" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-gw-icon-lbl" value="AgentCore Gateway&lt;br&gt;guardian-{org}-dev-*" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="190" y="333" width="120" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-rt-icon" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="380" y="280" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-rt-icon-lbl" value="AgentCore Runtime&lt;br&gt;(agent.py from S3)" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="345" y="333" width="125" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dev-iam-icon" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.role;fillColor=#DD344C;strokeColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="530" y="280" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-iam-icon-lbl" value="IAM Roles&lt;br&gt;AgentCoreExecutionRole&lt;br&gt;GuardianWrapperLambdaRole" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="490" y="333" width="150" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- DEV tool ETDs -->
+        <mxCell id="dev-etd-bg" value="" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="410" width="580" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-etd-title" value="Environment Tool Deployments (DEV)" style="text;html=1;fontSize=12;fontStyle=1;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="90" y="418" width="380" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-etd1" value="claims-lookup-fn&lt;br&gt;LAMBDA | ACTIVE&lt;br&gt;gateway_target_id: ABC" style="rounded=1;fillColor=#f5f5f5;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="90" y="450" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-etd2" value="PegasusClaimsAPI&lt;br&gt;API_GW | ACTIVE&lt;br&gt;wrapper: guardian-apigw-*" style="rounded=1;fillColor=#f5f5f5;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="280" y="450" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-etd3" value="payment-post-fn&lt;br&gt;LAMBDA | ACTIVE&lt;br&gt;gateway_target_id: XYZ" style="rounded=1;fillColor=#f5f5f5;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="460" y="450" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-etd-note" value="environment_id = DEV env ID (enforced by deploy route validation)" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="90" y="520" width="560" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- DEV agent deployments -->
+        <mxCell id="dev-aed-bg" value="" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="600" width="580" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-aed-title" value="Agent Environment Deployments (DEV)" style="text;html=1;fontSize=12;fontStyle=1;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="90" y="608" width="380" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-aed1" value="Claims Agent v1&lt;br&gt;DEPLOYED&lt;br&gt;agent_core_endpoint_id: *" style="rounded=1;fillColor=#f5f5f5;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="90" y="640" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dev-aed2" value="Policy Agent v1&lt;br&gt;DEPLOYING&lt;br&gt;s3_code_location: s3://..." style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="290" y="640" width="180" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Promote arrow -->
+        <mxCell id="promote-arr" value="&lt;b&gt;Promote&lt;/b&gt;&lt;br&gt;(logical definition only,&lt;br&gt;no ARN copy)" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d79b00;strokeWidth=3;dashed=1;fontSize=12;fontColor=#8a4000;fontStyle=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="720" y="500" as="sourcePoint" />
+            <mxPoint x="900" y="500" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="promote-rules" value="Promotion Rules:&lt;br&gt;✓ Copy logical_tool_definitions&lt;br&gt;✓ Create new ETDs in PROD env&lt;br&gt;✗ No DEV ARNs copied&lt;br&gt;✗ No DEV role ARNs&lt;br&gt;✗ No DEV gateway IDs&lt;br&gt;✓ Re-deploy using PROD account connection" style="rounded=1;fillColor=#fff2cc;strokeColor=#d79b00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="380" width="280" height="160" as="geometry" />
+        </mxCell>
+
+        <!-- PROD Account -->
+        <mxCell id="prod-acc-bg" value="" style="shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_account;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=3;opacity=60;verticalLabelPosition=top;verticalAlign=bottom;fontSize=14;fontStyle=1;fontColor=#8a4000;" vertex="1" label="PROD AWS Account" parent="1">
+          <mxGeometry x="1060" y="80" width="500" height="860" as="geometry" />
+        </mxCell>
+
+        <mxCell id="prod-conn" value="&lt;b&gt;AWS Account Connection (PROD)&lt;/b&gt;&lt;br&gt;discovery_role_arn (PROD)&lt;br&gt;deployment_role_arn (PROD)&lt;br&gt;agent_core_gateway_id (PROD)" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="130" width="260" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="prod-gw-icon" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="270" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="prod-gw-lbl2" value="AgentCore Gateway (PROD)" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="323" width="120" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="prod-rt-icon" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="270" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="prod-rt-lbl" value="AgentCore Runtime (PROD)" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1215" y="323" width="130" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- PROD ETDs -->
+        <mxCell id="prod-etd-bg" value="" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="400" width="420" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="prod-etd-title" value="Environment Tool Deployments (PROD)" style="text;html=1;fontSize=12;fontStyle=1;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="408" width="380" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="prod-etd1" value="claims-lookup-fn (PROD)&lt;br&gt;LAMBDA | ACTIVE&lt;br&gt;gateway_target_id: PROD-*" style="rounded=1;fillColor=#f5f5f5;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="445" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="prod-etd2" value="PegasusClaimsAPI (PROD)&lt;br&gt;API_GW | NOT_DEPLOYED&lt;br&gt;(pending re-deploy)" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="445" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="prod-etd-note" value="environment_id = PROD env ID (no DEV environment IDs allowed)" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="515" width="400" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- Security callouts -->
+        <mxCell id="sec-bg" value="" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="720" y="640" width="840" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="sec-title" value="Security Constraints (enforced in deploy routes)" style="text;html=1;fontSize=13;fontStyle=1;fillColor=none;strokeColor=none;fontColor=#5a0000;" vertex="1" parent="1">
+          <mxGeometry x="730" y="648" width="420" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="sec1" value="✗ No raw credentials — secret names only&lt;br&gt;   UI validates against /AKIA|BEGIN|password|token-value/i" style="text;html=1;fontSize=12;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="730" y="678" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sec2" value="✗ Deployment blocked if agent status ≠ APPROVED" style="text;html=1;fontSize=12;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="730" y="718" width="500" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sec3" value="✗ ETD environment_id must match target environment" style="text;html=1;fontSize=12;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="730" y="748" width="500" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sec4" value="✗ Platform-controlled deployment roles, not user credentials" style="text;html=1;fontSize=12;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="730" y="778" width="500" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sec5" value="✗ Do not copy DEV ARNs, gateway IDs, or IAM roles into PROD" style="text;html=1;fontSize=12;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="678" width="300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sec6" value="✗ No hardcoded AWS account IDs, model IDs, or role ARNs" style="text;html=1;fontSize=12;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="718" width="300" height="40" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="page5-request-flow" name="End-to-End Request Flow">
+    <mxGraphModel dx="1422" dy="762" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="rf-title" value="End-to-End Request Flow" style="text;html=1;fontSize=20;fontStyle=1;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="1000" height="36" as="geometry" />
+        </mxCell>
+
+        <!-- User -->
+        <mxCell id="rf-user" value="User / Client" style="shape=mxgraph.aws4.user;fillColor=#232F3E;fontColor=#ffffff;strokeColor=none;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="rf-user-lbl" value="User / Client" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="25" y="183" width="110" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Step 1 -->
+        <mxCell id="rf-a1" value="1. Request&lt;br&gt;(task + context)" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#333333;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="120" y="140" as="sourcePoint" />
+            <mxPoint x="200" y="140" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Frontend -->
+        <mxCell id="rf-fe" value="React Frontend&lt;br&gt;(port 4201)" style="rounded=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="200" y="110" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rf-a2" value="2. POST /api/llm/complete" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="340" y="140" as="sourcePoint" />
+            <mxPoint x="420" y="140" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Control Plane -->
+        <mxCell id="rf-cp" value="Control Plane&lt;br&gt;server.cjs" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="420" y="110" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Project lookup -->
+        <mxCell id="rf-a3" value="3. Lookup project +&lt;br&gt;ACTIVE tool grants" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#82b366;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="140" as="sourcePoint" />
+            <mxPoint x="640" y="140" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="rf-db" value="DB (project_tool_grants&lt;br&gt;+ ETDs)" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="640" y="110" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rf-a4" value="4. Resolve tool list" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#82b366;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="800" y="140" as="sourcePoint" />
+            <mxPoint x="560" y="140" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- LLM Provider -->
+        <mxCell id="rf-a5" value="5. complete({task, tools})" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="490" y="170" as="sourcePoint" />
+            <mxPoint x="490" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="rf-llm" value="LLM Provider&lt;br&gt;(mock: canned response&lt;br&gt;real: Bedrock Haiku)" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="380" y="280" width="200" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rf-a6" value="6. tool_call requested" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#9673a6;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="580" y="315" as="sourcePoint" />
+            <mxPoint x="700" y="315" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- AgentCore Runtime -->
+        <mxCell id="rf-acr" value="AgentCore Runtime&lt;br&gt;(InvokeAgentRuntime)" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#ffffff;fontColor=#232F3E;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="700" y="290" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="rf-acr-lbl" value="AgentCore&lt;br&gt;Runtime" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="690" y="363" width="90" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rf-a7" value="7. MCP tools/call" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#01A88D;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="770" y="325" as="sourcePoint" />
+            <mxPoint x="890" y="325" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- AgentCore Gateway -->
+        <mxCell id="rf-acg" value="AgentCore Gateway&lt;br&gt;(MCP endpoint)" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#ffffff;fontColor=#232F3E;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="890" y="290" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="rf-acg-lbl" value="AgentCore&lt;br&gt;Gateway" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="878" y="363" width="95" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rf-a8" value="8. Invoke target" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#E7157B;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="960" y="325" as="sourcePoint" />
+            <mxPoint x="1070" y="325" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Lambda / Wrapper -->
+        <mxCell id="rf-lambda" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda_function;fillColor=#E7157B;strokeColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="290" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="rf-lambda-lbl" value="Lambda or&lt;br&gt;Wrapper λ" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1055" y="353" width="90" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rf-a9" value="9. (API GW only)&lt;br&gt;proxy to API" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#d6b656;strokeWidth=2;fontSize=10;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1130" y="325" as="sourcePoint" />
+            <mxPoint x="1250" y="325" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="rf-ext" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;fillColor=#E7157B;strokeColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="295" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="rf-ext-lbl" value="External API&lt;br&gt;(PegasusClaimsAPI)" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1225" y="358" width="120" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Return path -->
+        <mxCell id="rf-ret1" value="10. tool result" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#333333;strokeWidth=2;fontSize=10;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1070" y="390" as="sourcePoint" />
+            <mxPoint x="920" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rf-ret2" value="11. runtime result" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#333333;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="890" y="400" as="sourcePoint" />
+            <mxPoint x="770" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rf-ret3" value="12. LLM final answer" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#333333;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="700" y="400" as="sourcePoint" />
+            <mxPoint x="560" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rf-ret4" value="13. Response" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#333333;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="400" as="sourcePoint" />
+            <mxPoint x="200" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rf-ret5" value="14. Display" style="edgeStyle=orthogonalEdgeStyle;strokeColor=#333333;strokeWidth=2;fontSize=10;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="200" y="400" as="sourcePoint" />
+            <mxPoint x="120" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- MCP Protocol Detail -->
+        <mxCell id="mcp-bg" value="" style="rounded=1;fillColor=#f5f5f5;strokeColor=#01A88D;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="600" y="450" width="660" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp-title" value="MCP Protocol (JSON-RPC 2.0) — Gateway ↔ Targets" style="text;html=1;fontSize=13;fontStyle=1;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="615" y="458" width="500" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp-init" value="initialize&lt;br&gt;→ {protocolVersion, capabilities}" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="615" y="492" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp-list" value="tools/list&lt;br&gt;→ {tools: [{name, description, inputSchema}]}" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="815" y="492" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp-call" value="tools/call&lt;br&gt;→ {content: [{type:text, text:result}]}" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1045" y="492" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp-note" value="POST /mock-mcp — local MCP endpoint for development testing (mock agentcore provider)" style="text;html=1;fontSize=11;align=center;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="615" y="565" width="630" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp-note2" value="Real: InvokeAgentRuntimeCommand → bedrock-agentcore endpoint → gateway → target Lambda" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="615" y="598" width="630" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Runtime mode comparison -->
+        <mxCell id="mode-bg" value="" style="rounded=1;fillColor=#f9f9f9;strokeColor=#333333;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="450" width="520" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="mode-title" value="Runtime Modes (APP_MODE)" style="text;html=1;fontSize=13;fontStyle=1;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="55" y="458" width="280" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="mode-mock" value="&lt;b&gt;mock&lt;/b&gt; (default)&lt;br&gt;DB: SQLite :memory:&lt;br&gt;AWS: mock (no calls)&lt;br&gt;AgentCore: in-process MCP&lt;br&gt;LLM: canned responses&lt;br&gt;Identity: mock-user-001" style="rounded=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="55" y="490" width="150" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="mode-local" value="&lt;b&gt;local&lt;/b&gt;&lt;br&gt;DB: Postgres (Docker)&lt;br&gt;AWS: mock (no calls)&lt;br&gt;AgentCore: mock&lt;br&gt;LLM: mock&lt;br&gt;Identity: mock" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="215" y="490" width="150" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="mode-dev" value="&lt;b&gt;dev&lt;/b&gt;&lt;br&gt;DB: Remote Postgres&lt;br&gt;AWS: Real SDK calls&lt;br&gt;AgentCore: Real&lt;br&gt;LLM: Bedrock Haiku&lt;br&gt;Identity: STS/real" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="375" y="490" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="mode-cmds" value="npm run dev:mock&lt;br&gt;npm run dev:local&lt;br&gt;npm run dev:connected" style="text;html=1;fontSize=12;fontFamily=Courier New;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="55" y="625" width="480" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mode-test" value="Tests: npm test (9 unit + 68 API integration, all APP_MODE=mock)" style="text;html=1;fontSize=11;align=center;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="55" y="690" width="490" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

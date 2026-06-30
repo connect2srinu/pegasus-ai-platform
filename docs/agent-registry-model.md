@@ -1,5 +1,73 @@
 # Agent Registry Model
 
+> **Implementation note:** The section below labelled _As-Built Schema_ reflects what is in the codebase today (`backend/runtime/db/schema.sql` / `schema-postgres.sql`). The rest of this document is the aspirational full-featured model that the as-built simplifies. Aspirational tables and fields not yet implemented are preserved here to guide future work.
+
+## As-Built Schema (Current Implementation)
+
+### `agents`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | TEXT PK | UUID |
+| `project_id` | TEXT FK → projects | |
+| `organization_id` | TEXT FK → organizations | |
+| `name` | TEXT | |
+| `description` | TEXT | |
+| `system_prompt` | TEXT | |
+| `model_id` | TEXT | Bedrock model ID |
+| `status` | TEXT | DRAFT · SUBMITTED · APPROVED · REJECTED · deploying · DEPLOYED |
+| `authored_via` | TEXT | "wizard" or "yaml" |
+| `risk_tier` | TEXT | low · medium · high · critical (default: medium) |
+| `created_by` | TEXT | user identifier |
+| `created_at` | TIMESTAMP | |
+| `updated_at` | TIMESTAMP | |
+
+### `agent_approval_requests`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | TEXT PK | |
+| `organization_id` | TEXT FK | |
+| `project_id` | TEXT FK | |
+| `agent_id` | TEXT FK → agents | |
+| `approver_type` | TEXT | **business_owner** · **platform_admin** |
+| `risk_tier` | TEXT | copied from agent at publish time |
+| `reason` | TEXT | optional justification |
+| `requested_by` | TEXT | |
+| `reviewed_by` | TEXT | |
+| `status` | TEXT | pending · approved · rejected |
+| `comments` | TEXT | reviewer notes |
+| `created_at` | TIMESTAMP | |
+| `updated_at` | TIMESTAMP | |
+
+Both rows must reach `status = approved` before agent transitions to `APPROVED`. Rejection of either immediately sets `agents.status = REJECTED`.  
+API: `GET /api/approvals` (lists both tool and agent tasks), `POST /api/approvals/:taskId/decision`.
+
+### `agent_environment_deployments`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | TEXT PK | |
+| `agent_id` | TEXT FK | |
+| `project_id` | TEXT FK | |
+| `organization_id` | TEXT FK | |
+| `environment_id` | TEXT FK → environments | DEV / STAGING / PROD |
+| `deployment_status` | TEXT | NOT_DEPLOYED · deploying · DEPLOYED · FAILED |
+| `agent_core_agent_id` | TEXT | from CreateAgentRuntime |
+| `agent_core_agent_arn` | TEXT | |
+| `agent_core_endpoint_id` | TEXT | from CreateAgentRuntimeEndpoint |
+| `agent_core_endpoint_arn` | TEXT | |
+| `runtime_name` | TEXT | |
+| `s3_code_location` | TEXT | s3://bucket/agents/{id}/{ver}/agent.py |
+| `deployment_logs` | TEXT | |
+| `error_message` | TEXT | |
+| `promoted_from_environment_id` | TEXT | set on DEV→PROD promotion |
+| `deployed_at` | TIMESTAMP | |
+
+UNIQUE constraint on `(agent_id, environment_id)` — one deployment record per environment.
+
+---
+
 ## Purpose
 
 The Agent Registry is the source of truth for agent identity, ownership, lifecycle, validation, approval, deployment, and runtime policy. It must support multiple agent frameworks through one normalized model.
@@ -140,13 +208,15 @@ Each validation result is immutable and attached to an agent version.
 
 ## Approval Records
 
-Approval is version-specific.
+> **As built:** approval is per-agent (not per-version). `approver_type` values are `business_owner` and `platform_admin` (not `project_owner` / `security`). See the _As-Built Schema_ section above for the actual `agent_approval_requests` table.
+
+Aspirational version-specific model:
 
 | Field | Description |
 | --- | --- |
 | id | Approval id |
 | agentVersionId | Agent version |
-| approverType | project_owner, platform_admin, security |
+| approverType | project_owner, platform_admin, security *(aspirational; current: business_owner, platform_admin)* |
 | approverUserId | Approver |
 | decision | approved, rejected, revoked |
 | comments | Review comment |

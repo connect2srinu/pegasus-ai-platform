@@ -214,6 +214,86 @@ function ToolRegistrationCard({ task, onDecide }) {
   );
 }
 
+// ── Agent approval task card ──────────────────────────────────────────────────
+
+function AgentApprovalCard({ task, onDecide }) {
+  const [comment, setComment] = useState("");
+  const [busy, setBusy] = useState(false);
+  const isPending = task.status === "pending";
+
+  async function decide(decision) {
+    setBusy(true);
+    try {
+      const result = await api(`/api/approvals/${task.id}/decision`, {
+        method: "POST",
+        body: JSON.stringify({ decision, comments: comment, approver: "platform-admin@example.com" }),
+      });
+      onDecide(result);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className={`org-approval-card ${isPending ? "org-approval-card--pending" : task.status === "approved" ? "org-approval-card--approved" : "org-approval-card--rejected"}`}>
+      <div className="org-approval-card-header">
+        <StatusIcon status={task.status} />
+        <div className="org-approval-card-meta">
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <strong>{task.agentName || task.resourceName || task.agentId}</strong>
+            <span className="pill" style={{ fontSize: 10, background: "var(--blue-light, #eff6ff)", color: "var(--blue, #2563eb)" }}>Agent</span>
+          </div>
+          <p className="muted" style={{ margin: "2px 0 0", fontSize: 12 }}>
+            {task.reason || "Agent submission — review required"}
+          </p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <ApproverBadge type={task.approverType} />
+          <span className={`pill ${task.status === "approved" ? "pill--green" : task.status === "rejected" ? "pill--red" : "pill--amber"}`} style={{ fontSize: 10 }}>
+            {task.status.toUpperCase()}
+          </span>
+          {task.riskTier && (
+            <span className={`risk risk-${task.riskTier === "high" || task.riskTier === "critical" ? "high" : task.riskTier === "medium" ? "medium" : "low"}`}>
+              {task.riskTier}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {isPending && (
+        <div className="org-approval-action-bar">
+          <input
+            className="comment-input"
+            placeholder="Reviewer comment (optional)"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            style={{ flex: 1 }}
+          />
+          <button className="danger" onClick={() => decide("rejected")} disabled={busy}>
+            <XCircle size={13} style={{ marginRight: 5 }} />Reject
+          </button>
+          <button className="primary" onClick={() => decide("approved")} disabled={busy}>
+            <CheckCircle2 size={13} style={{ marginRight: 5 }} />
+            {busy ? "Saving…" : "Approve"}
+          </button>
+        </div>
+      )}
+
+      {!isPending && (
+        <div className="org-approval-decided">
+          <StatusIcon status={task.status} />
+          <span>
+            {task.status === "approved" ? "Approved" : "Rejected"} by <strong>{task.reviewedBy || "—"}</strong>
+          </span>
+          {task.comments && <span className="muted">· "{task.comments}"</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main OrgApprovals ─────────────────────────────────────────────────────────
 
 export { ToolRegistrationCard };
@@ -244,12 +324,14 @@ export default function OrgApprovals({ org, onApprovalDecided }) {
   const filtered = tasks.filter((t) => statusFilter === "all" || t.status === statusFilter);
   const pendingCount = tasks.filter((t) => t.status === "pending").length;
 
-  // Group by TRR so related tasks (org_admin + platform_admin) are together
-  const byTrr = {};
+  // Group tool tasks by TRR; group agent tasks by agentId
+  const groups = {};
   for (const t of filtered) {
-    const key = t.toolRegistrationRequestId || t.id;
-    if (!byTrr[key]) byTrr[key] = { trr: t._trr, ltd: t._ltd, tasks: [] };
-    byTrr[key].tasks.push(t);
+    const key = t.taskCategory === "agent_approval"
+      ? `agent:${t.agentId}`
+      : (t.toolRegistrationRequestId || t.id);
+    if (!groups[key]) groups[key] = { kind: t.taskCategory || "tool_registration", trr: t._trr, ltd: t._ltd, agentName: t.agentName, tasks: [] };
+    groups[key].tasks.push(t);
   }
 
   return (
@@ -258,8 +340,8 @@ export default function OrgApprovals({ org, onApprovalDecided }) {
         <div>
           <h2 style={{ margin: 0 }}>Org-Level Approvals</h2>
           <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
-            Approve or reject tool registration requests for this organization.
-            Once all stages approve, the tool becomes active and can be deployed to environments.
+            Approve or reject tool registrations and agent submissions for this organization.
+            All approval stages must pass before a resource becomes active.
           </p>
         </div>
         <button className="secondary" onClick={load}>
@@ -298,7 +380,7 @@ export default function OrgApprovals({ org, onApprovalDecided }) {
           <CheckCircle2 size={28} style={{ opacity: 0.3, marginBottom: 10 }} />
           <strong>No org-level approval tasks</strong>
           <p className="muted" style={{ marginTop: 6 }}>
-            When you register a tool from the Connected Accounts page, approval tasks appear here.
+            Approval tasks appear here when tools are registered or agents are submitted via the Author wizard.
           </p>
         </div>
       )}
@@ -310,15 +392,19 @@ export default function OrgApprovals({ org, onApprovalDecided }) {
         </div>
       )}
 
-      {/* Group tasks by TRR */}
+      {/* Group tasks by TRR (tools) or agentId (agents) */}
       <div className="org-approvals-list">
-        {Object.values(byTrr).map((group) => (
-          <div key={group.tasks[0].toolRegistrationRequestId || group.tasks[0].id} className="org-approval-group">
+        {Object.values(groups).map((group) => (
+          <div key={group.tasks[0].toolRegistrationRequestId || group.tasks[0].agentId || group.tasks[0].id} className="org-approval-group">
             {group.tasks.length > 1 && (
               <div className="org-approval-group-label">
                 <span className="muted" style={{ fontSize: 11 }}>
                   {group.tasks.length} approval stages for{" "}
-                  <strong>{group.ltd?.toolKey || group.trr?.requestedToolName || "tool"}</strong>
+                  <strong>
+                    {group.kind === "agent_approval"
+                      ? (group.agentName || "agent")
+                      : (group.ltd?.toolKey || group.trr?.requestedToolName || "tool")}
+                  </strong>
                 </span>
                 <div className="org-approval-stage-dots">
                   {group.tasks.map((t) => (
@@ -331,9 +417,11 @@ export default function OrgApprovals({ org, onApprovalDecided }) {
                 </div>
               </div>
             )}
-            {group.tasks.map((t) => (
-              <ToolRegistrationCard key={t.id} task={t} onDecide={handleDecide} />
-            ))}
+            {group.tasks.map((t) =>
+              group.kind === "agent_approval"
+                ? <AgentApprovalCard key={t.id} task={t} onDecide={handleDecide} />
+                : <ToolRegistrationCard key={t.id} task={t} onDecide={handleDecide} />
+            )}
           </div>
         ))}
       </div>

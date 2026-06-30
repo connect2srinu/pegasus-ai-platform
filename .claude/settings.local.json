@@ -13,7 +13,28 @@
       "Bash(pkill -f \"static-server.cjs\")",
       "Bash(pkill -f \"vite\")",
       "Bash(wsl -e bash -c \"pkill -f 'static-server.cjs' 2>/dev/null; pkill -f 'vite' 2>/dev/null; echo killed\")",
-      "PowerShell(wsl -d ubuntu -e bash -c \"pkill -f 'static-server.cjs'; pkill -f 'vite'; echo killed\")"
+      "PowerShell(wsl -d ubuntu -e bash -c \"pkill -f 'static-server.cjs'; pkill -f 'vite'; echo killed\")",
+      "Bash(node --check scripts/server.cjs)",
+      "Bash(PORT=4299 APP_MODE=mock node scripts/server.cjs)",
+      "Bash(curl -s http://localhost:4299/api/organizations/test-org/account-connections)",
+      "Bash(curl -s -X POST http://localhost:4299/api/organizations/test-org/account-connections -H 'Content-Type: application/json' -d '{\"awsAccountId\":\"123456789012\",\"discoveryRoleArn\":\"arn:aws:iam::123456789012:role/DiscoveryRole\",\"accountName\":\"Test Acct\"}')",
+      "Bash(kill %1)",
+      "Bash(wait)",
+      "Bash(node -e \"require\\('dotenv'\\)\")",
+      "Bash(npm ls *)",
+      "Bash(npm install *)",
+      "Bash(APP_MODE=local node -e \"const c = require\\('./backend/runtime/config.cjs'\\); console.log\\(JSON.stringify\\(c, null, 2\\)\\)\")",
+      "Bash(APP_MODE=mock node -e \"const c = require\\('./backend/runtime/config.cjs'\\); console.log\\('db='+c.dbType, 'aws='+c.useRealAws, 'url='+c.dbUrl\\)\")",
+      "Bash(psql -U postgres -c \"\\\\conninfo\")",
+      "Bash(sudo -u postgres psql -c \"\\\\conninfo\")",
+      "Bash(psql postgresql://postgres:postgres@localhost:5432/guaistudio -c \"\\\\conninfo\")",
+      "Bash(psql postgresql://postgres@localhost:5432/guaistudio -c \"\\\\conninfo\")",
+      "Read(//etc/postgresql/**)",
+      "Bash(grep -v \"^$\")",
+      "Read(//etc/**)",
+      "Bash(pg_lsclusters)",
+      "Bash(psql --version)",
+      "Read(//etc/postgresql/16/main/**)"
     ]
   }
 }

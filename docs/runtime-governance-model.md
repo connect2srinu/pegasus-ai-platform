@@ -1,5 +1,7 @@
 # Runtime Governance Model
 
+> **Implementation note:** The full runtime guard, policy snapshot, and Apigee integration described below are aspirational. The current implementation uses the mock AgentCore provider (in-process MCP) in `mock` mode and real `InvokeAgentRuntimeCommand` in `dev` mode. Tool invocation reaches the AgentCore Gateway → registered Lambda/wrapper target directly — there is no Apigee proxy layer yet. The authorization layers section below is accurate for the planned production architecture.
+
 ## Purpose
 
 Runtime governance ensures that approved agents remain constrained during execution. Approval is necessary but not sufficient. Every invocation should be checked against current user, project, agent, deployment, tool, knowledge, memory, and secret policies.
@@ -78,6 +80,23 @@ Snapshot contents:
 Runtime should also support emergency deny checks for revoked agents, suspended deployments, or compromised tools.
 
 ## Tool Invocation Enforcement
+
+### As Implemented (current build)
+
+```mermaid
+flowchart TD
+  A["Agent invokes tool via MCP tools/call"] --> B["AgentCore Gateway\nlooks up gateway_target_id"]
+  B --> C{"Target type?"}
+  C -- LAMBDA --> D["Invoke Lambda directly\n(bedrock-agentcore.amazonaws.com)"]
+  C -- API_GATEWAY --> E["Invoke guardian-apigw-* wrapper λ"]
+  E --> F["Wrapper proxies to\nAPI Gateway endpoint"]
+  D --> G["Return result"]
+  F --> G
+```
+
+Lambda targets are registered via `CreateGatewayTargetCommand`. The wrapper Lambda for API Gateway tools is deployed by `wrapper-deployer.cjs` using a pure Node.js ZIP implementation (no system `zip` binary required). Permission granted via `addLambdaInvokePermission` with principal `bedrock-agentcore.amazonaws.com`.
+
+### Aspirational (planned — Apigee integration)
 
 ```mermaid
 flowchart TD

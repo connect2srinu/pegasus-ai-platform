@@ -2,12 +2,14 @@ import { Table } from "../shared/index.jsx";
 import { fallback } from "../../constants.js";
 
 export default function SettingsScreen({ project }) {
+  const projectName = typeof project === "object" ? project?.name : project;
+  const data = fallback[projectName] || fallback[Object.keys(fallback)[0]] || { users: [] };
   return (
     <div className="grid cols-2">
       <section className="panel">
         <h2>Users and Roles</h2>
         <Table headers={["User", "Role", "Last Active"]}>
-          {fallback[project].users.map((row) => (
+          {(data.users || []).map((row) => (
             <tr key={row[0]}>
               <td>{row[0]}</td>
               <td><span className="pill">{row[1]}</span></td>

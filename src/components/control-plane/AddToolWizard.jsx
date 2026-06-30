@@ -386,7 +386,7 @@ export default function AddToolWizard({ project, pid, onSuccess, onCancel }) {
         <div className="wizard-header">
           <div>
             <p className="eyebrow">Tool Registration</p>
-            <h2>Add Tool to {project}</h2>
+            <h2>Add Tool to {typeof project === "object" ? project?.name : project}</h2>
           </div>
           <button className="secondary icon-only" onClick={onCancel}><X size={16} /></button>
         </div>

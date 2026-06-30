@@ -37,7 +37,10 @@ async function resolveLocalAwsContext() {
   if (_resolved) return _cached;
   _resolved = true;
 
-  if (process.env.LOCAL_AWS_MODE !== "true") {
+  const awsEnabled = process.env.LOCAL_AWS_MODE === "true"
+    || process.env.USE_REAL_AWS === "true"
+    || process.env.USE_REAL_AGENTCORE === "true";
+  if (!awsEnabled) {
     _cached = null;
     return null;
   }

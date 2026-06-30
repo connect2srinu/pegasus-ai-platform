@@ -2,7 +2,9 @@ import { Metric, Table, Status } from "../shared/index.jsx";
 import { fallback } from "../../constants.js";
 
 export default function Workspace({ project, agents, setScreen }) {
-  const summary = fallback[project].summary;
+  const projectName = typeof project === "object" ? project?.name : project;
+  const summaryData = fallback[projectName] || fallback[Object.keys(fallback)[0]];
+  const summary = summaryData?.summary || { approvedAgents: 0, reviewAgents: 0, runs24h: 0, failedRuns: 0, policyPass: 0, approvals: 0, blocked: 0 };
   return (
     <>
       <div className="grid cols-3">

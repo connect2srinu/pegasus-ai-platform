@@ -282,11 +282,14 @@ export const SIDE_EFFECT_LEVELS = {
 };
 
 export const PROJECT_TOOL_STATUS = {
-  ACTIVE:          { label: "Active",           cls: "pass" },
-  DISABLED:        { label: "Disabled",         cls: "fail" },
-  STALE:           { label: "Stale",            cls: "warn" },
-  REVIEW_REQUIRED: { label: "Review Required",  cls: "warn" },
-  REMOVED:         { label: "Removed",          cls: "fail" },
+  ACTIVE:          { label: "Active",            cls: "pass" },
+  DISABLED:        { label: "Disabled",          cls: "fail" },
+  STALE:           { label: "Stale",             cls: "warn" },
+  REVIEW_REQUIRED: { label: "Review Required",   cls: "warn" },
+  REMOVED:         { label: "Removed",           cls: "fail" },
+  PENDING_GATEWAY: { label: "Pending Deployment",cls: "warn" },
+  NOT_DEPLOYED:    { label: "Not Deployed",      cls: "warn" },
+  DRIFT_DETECTED:  { label: "Drift Detected",    cls: "warn" },
 };
 
 export const AWS_REGIONS = [

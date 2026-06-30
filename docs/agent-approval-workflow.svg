@@ -1,201 +1,10 @@
-<svg viewBox="0 0 820 920" xmlns="http://www.w3.org/2000/svg" role="img" font-family="system-ui, -apple-system, sans-serif">
-  <title>Agent Approval Workflow</title>
-  <desc>Two flows: Tool/KB onboarding form, and the agent lifecycle approval chain from submission to deployment.</desc>
-
-  <!-- Background -->
-  <rect width="820" height="920" fill="#f8f9fa" rx="12"/>
-
-  <!-- SECTION 1: Add Tool / KB to Project -->
-  <rect x="20" y="16" width="780" height="36" rx="8" fill="#e8f0fe"/>
-  <text x="410" y="39" text-anchor="middle" font-size="14" font-weight="700" fill="#1a1a2e">PART 1 — Add Tool / Knowledge Base to a Project</text>
-
-  <!-- Box 1: Project Writer -->
-  <rect x="30" y="66" width="155" height="72" rx="8" fill="#fff" stroke="#d0d7de" stroke-width="1.5"/>
-  <rect x="30" y="66" width="155" height="10" rx="8" fill="#6366f1"/>
-  <rect x="30" y="72" width="155" height="4" fill="#6366f1"/>
-  <text x="107" y="97" text-anchor="middle" font-size="11" font-weight="700" fill="#6366f1">PROJECT WRITER</text>
-  <text x="107" y="112" text-anchor="middle" font-size="10" fill="#555">Opens "Add Tool / KB"</text>
-  <text x="107" y="126" text-anchor="middle" font-size="10" fill="#555">form in project settings</text>
-
-  <line x1="185" y1="102" x2="210" y2="102" stroke="#999" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Box 2: Form -->
-  <rect x="210" y="56" width="175" height="92" rx="8" fill="#fff" stroke="#6366f1" stroke-width="1.5" stroke-dasharray="5,3"/>
-  <text x="297" y="76" text-anchor="middle" font-size="11" font-weight="700" fill="#6366f1">FORM FIELDS</text>
-  <text x="297" y="91" text-anchor="middle" font-size="10" fill="#555">Tool / KB name &amp; type</text>
-  <text x="297" y="104" text-anchor="middle" font-size="10" fill="#555">Target server / endpoint</text>
-  <text x="297" y="117" text-anchor="middle" font-size="10" fill="#555">Credential ref (secret name)</text>
-  <text x="297" y="130" text-anchor="middle" font-size="10" fill="#555">Risk tier  ·  Classification</text>
-  <text x="297" y="143" text-anchor="middle" font-size="10" fill="#555">Scope / allowed agent types</text>
-
-  <line x1="385" y1="102" x2="410" y2="102" stroke="#999" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Box 3: Tool Owner Review -->
-  <rect x="410" y="66" width="150" height="72" rx="8" fill="#fff" stroke="#d0d7de" stroke-width="1.5"/>
-  <rect x="410" y="66" width="150" height="10" rx="8" fill="#f59e0b"/>
-  <rect x="410" y="72" width="150" height="4" fill="#f59e0b"/>
-  <text x="485" y="97" text-anchor="middle" font-size="11" font-weight="700" fill="#b45309">TOOL OWNER</text>
-  <text x="485" y="112" text-anchor="middle" font-size="10" fill="#555">Reviews endpoint &amp;</text>
-  <text x="485" y="126" text-anchor="middle" font-size="10" fill="#555">credential details</text>
-
-  <line x1="560" y1="102" x2="585" y2="102" stroke="#999" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Box 4: Platform Admin -->
-  <rect x="585" y="66" width="150" height="72" rx="8" fill="#fff" stroke="#d0d7de" stroke-width="1.5"/>
-  <rect x="585" y="66" width="150" height="10" rx="8" fill="#ef4444"/>
-  <rect x="585" y="72" width="150" height="4" fill="#ef4444"/>
-  <text x="660" y="97" text-anchor="middle" font-size="11" font-weight="700" fill="#b91c1c">PLATFORM ADMIN</text>
-  <text x="660" y="112" text-anchor="middle" font-size="10" fill="#555">Approves, sets risk tier,</text>
-  <text x="660" y="126" text-anchor="middle" font-size="10" fill="#555">publishes to catalog</text>
-
-  <line x1="660" y1="138" x2="660" y2="162" stroke="#999" stroke-width="1.5" marker-end="url(#arr)"/>
-  <rect x="570" y="162" width="180" height="28" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.2"/>
-  <text x="660" y="181" text-anchor="middle" font-size="10" font-weight="700" fill="#15803d">Tool / KB live in project catalog</text>
-
-  <!-- Divider -->
-  <line x1="20" y1="208" x2="800" y2="208" stroke="#d0d7de" stroke-width="1" stroke-dasharray="6,4"/>
-
-  <!-- SECTION 2: Agent Approval Lifecycle -->
-  <rect x="20" y="218" width="780" height="36" rx="8" fill="#e8f0fe"/>
-  <text x="410" y="241" text-anchor="middle" font-size="14" font-weight="700" fill="#1a1a2e">PART 2 — Agent Approval Lifecycle</text>
-
-  <!-- Lane headers -->
-  <text x="107" y="278" text-anchor="middle" font-size="10" font-weight="700" fill="#6366f1">AGENT AUTHOR</text>
-  <text x="310" y="278" text-anchor="middle" font-size="10" font-weight="700" fill="#f59e0b">PROJECT OWNER</text>
-  <text x="510" y="278" text-anchor="middle" font-size="10" font-weight="700" fill="#ef4444">PLATFORM ADMIN</text>
-  <text x="700" y="278" text-anchor="middle" font-size="10" font-weight="700" fill="#16a34a">OUTCOME</text>
-
-  <!-- Lane verticals -->
-  <line x1="207" y1="264" x2="207" y2="870" stroke="#d0d7de" stroke-width="1" stroke-dasharray="4,4"/>
-  <line x1="407" y1="264" x2="407" y2="870" stroke="#d0d7de" stroke-width="1" stroke-dasharray="4,4"/>
-  <line x1="607" y1="264" x2="607" y2="870" stroke="#d0d7de" stroke-width="1" stroke-dasharray="4,4"/>
-
-  <!-- STEP 1: Submit -->
-  <rect x="30" y="290" width="155" height="62" rx="8" fill="#fff" stroke="#6366f1" stroke-width="1.5"/>
-  <text x="107" y="315" text-anchor="middle" font-size="11" font-weight="700" fill="#6366f1">SUBMIT AGENT</text>
-  <text x="107" y="330" text-anchor="middle" font-size="10" fill="#555">Form or YAML upload</text>
-  <text x="107" y="344" text-anchor="middle" font-size="10" fill="#555">Auto-validation runs</text>
-
-  <line x1="107" y1="352" x2="107" y2="378" stroke="#999" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Validation diamond -->
-  <polygon points="107,378 157,408 107,438 57,408" fill="#fff" stroke="#6366f1" stroke-width="1.5"/>
-  <text x="107" y="404" text-anchor="middle" font-size="10" font-weight="700" fill="#6366f1">VALID?</text>
-  <text x="107" y="418" text-anchor="middle" font-size="9" fill="#555">schema · tools · KB</text>
-
-  <!-- No → Draft -->
-  <line x1="57" y1="408" x2="30" y2="408" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arr-red)"/>
-  <rect x="-60" y="390" width="90" height="36" rx="6" fill="#fee2e2" stroke="#ef4444" stroke-width="1.2"/>
-  <text x="-15" y="406" text-anchor="middle" font-size="10" font-weight="700" fill="#b91c1c">DRAFT</text>
-  <text x="-15" y="420" text-anchor="middle" font-size="9" fill="#b91c1c">fix &amp; resubmit</text>
-  <text x="44" y="402" text-anchor="middle" font-size="9" fill="#ef4444">No</text>
-
-  <!-- Yes → down -->
-  <line x1="107" y1="438" x2="107" y2="462" stroke="#999" stroke-width="1.5" marker-end="url(#arr)"/>
-  <text x="116" y="453" font-size="9" fill="#16a34a">Yes</text>
-
-  <!-- STEP 3: Risk triage -->
-  <rect x="30" y="462" width="155" height="52" rx="8" fill="#fff" stroke="#d0d7de" stroke-width="1.5"/>
-  <text x="107" y="483" text-anchor="middle" font-size="11" font-weight="700" fill="#333">RISK TRIAGE</text>
-  <text x="107" y="498" text-anchor="middle" font-size="10" fill="#555">Severity: low / med / high</text>
-  <text x="107" y="512" text-anchor="middle" font-size="10" fill="#555">critical → extra reviewers</text>
-
-  <line x1="185" y1="488" x2="232" y2="488" stroke="#999" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- STEP 4: Project Owner -->
-  <rect x="232" y="462" width="155" height="82" rx="8" fill="#fff" stroke="#f59e0b" stroke-width="1.5"/>
-  <rect x="232" y="462" width="155" height="10" rx="8" fill="#f59e0b"/>
-  <rect x="232" y="468" width="155" height="4" fill="#f59e0b"/>
-  <text x="309" y="490" text-anchor="middle" font-size="11" font-weight="700" fill="#b45309">BUSINESS OWNER</text>
-  <text x="309" y="504" text-anchor="middle" font-size="10" fill="#555">Reviews: purpose, tools,</text>
-  <text x="309" y="518" text-anchor="middle" font-size="10" fill="#555">KB access, memory policy</text>
-  <text x="309" y="532" text-anchor="middle" font-size="10" fill="#555">Approve / Reject + comments</text>
-
-  <line x1="309" y1="544" x2="309" y2="568" stroke="#999" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Conditional specialist reviews -->
-  <rect x="232" y="568" width="155" height="72" rx="8" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="4,3"/>
-  <text x="309" y="586" text-anchor="middle" font-size="10" font-weight="700" fill="#b45309">IF high / critical risk</text>
-  <text x="309" y="600" text-anchor="middle" font-size="10" fill="#555">Tool Owner review</text>
-  <text x="309" y="614" text-anchor="middle" font-size="10" fill="#555">(restricted tools)</text>
-  <text x="309" y="628" text-anchor="middle" font-size="10" fill="#555">Data Owner review (KB)</text>
-
-  <line x1="387" y1="604" x2="432" y2="604" stroke="#999" stroke-width="1.5" marker-end="url(#arr)"/>
-  <line x1="387" y1="488" x2="432" y2="488" stroke="#999" stroke-width="1.5" marker-end="url(#arr)"/>
-  <line x1="432" y1="488" x2="432" y2="604" stroke="#999" stroke-width="1.5"/>
-
-  <!-- STEP 5: Platform Admin -->
-  <rect x="432" y="462" width="155" height="82" rx="8" fill="#fff" stroke="#ef4444" stroke-width="1.5"/>
-  <rect x="432" y="462" width="155" height="10" rx="8" fill="#ef4444"/>
-  <rect x="432" y="468" width="155" height="4" fill="#ef4444"/>
-  <text x="509" y="490" text-anchor="middle" font-size="11" font-weight="700" fill="#b91c1c">PLATFORM ADMIN</text>
-  <text x="509" y="504" text-anchor="middle" font-size="10" fill="#555">Final gate: security,</text>
-  <text x="509" y="518" text-anchor="middle" font-size="10" fill="#555">compliance, deployment</text>
-  <text x="509" y="532" text-anchor="middle" font-size="10" fill="#555">eligibility check</text>
-
-  <line x1="509" y1="544" x2="509" y2="568" stroke="#999" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Decision diamond -->
-  <polygon points="509,568 554,594 509,620 464,594" fill="#fff" stroke="#ef4444" stroke-width="1.5"/>
-  <text x="509" y="590" text-anchor="middle" font-size="10" font-weight="700" fill="#ef4444">DECISION</text>
-  <text x="509" y="604" text-anchor="middle" font-size="9" fill="#555">approve / reject</text>
-
-  <!-- Reject path -->
-  <line x1="464" y1="594" x2="420" y2="594" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arr-red)"/>
-  <text x="442" y="588" text-anchor="middle" font-size="9" fill="#ef4444">Reject</text>
-  <rect x="280" y="678" width="130" height="32" rx="6" fill="#fee2e2" stroke="#ef4444" stroke-width="1.2"/>
-  <text x="345" y="696" text-anchor="middle" font-size="10" font-weight="700" fill="#b91c1c">REJECTED</text>
-  <text x="345" y="708" text-anchor="middle" font-size="9" fill="#b91c1c">author notified + comments</text>
-  <line x1="420" y1="594" x2="345" y2="594" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2"/>
-  <line x1="345" y1="594" x2="345" y2="678" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr-red)"/>
-
-  <!-- Approve path -->
-  <line x1="554" y1="594" x2="620" y2="594" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr-green)"/>
-  <text x="587" y="588" text-anchor="middle" font-size="9" fill="#16a34a">Approve</text>
-
-  <!-- APPROVED box -->
-  <rect x="620" y="568" width="160" height="52" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-  <text x="700" y="590" text-anchor="middle" font-size="11" font-weight="700" fill="#15803d">APPROVED</text>
-  <text x="700" y="604" text-anchor="middle" font-size="10" fill="#15803d">Status set, agent visible</text>
-  <text x="700" y="618" text-anchor="middle" font-size="10" fill="#15803d">in project catalog</text>
-
-  <line x1="700" y1="620" x2="700" y2="650" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr-green)"/>
-
-  <!-- DEPLOYMENT box -->
-  <rect x="620" y="650" width="160" height="52" rx="8" fill="#fff" stroke="#6366f1" stroke-width="1.5"/>
-  <text x="700" y="672" text-anchor="middle" font-size="11" font-weight="700" fill="#6366f1">DEPLOYMENT</text>
-  <text x="700" y="686" text-anchor="middle" font-size="10" fill="#555">Policy snapshot locked</text>
-  <text x="700" y="700" text-anchor="middle" font-size="10" fill="#555">AgentCore runtime target</text>
-
-  <!-- Project owner reject -->
-  <line x1="232" y1="503" x2="185" y2="503" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#arr-red)"/>
-  <text x="208" y="497" text-anchor="middle" font-size="8" fill="#ef4444">Reject</text>
-
-  <!-- Legend -->
-  <rect x="20" y="778" width="780" height="120" rx="8" fill="#fff" stroke="#d0d7de" stroke-width="1"/>
-  <text x="40" y="800" font-size="11" font-weight="700" fill="#333">Legend</text>
-
-  <rect x="40" y="812" width="12" height="12" rx="2" fill="#6366f1"/>
-  <text x="58" y="823" font-size="10" fill="#555">Agent Author / Project Writer</text>
-
-  <rect x="200" y="812" width="12" height="12" rx="2" fill="#f59e0b"/>
-  <text x="218" y="823" font-size="10" fill="#555">Project / Business Owner</text>
-
-  <rect x="370" y="812" width="12" height="12" rx="2" fill="#ef4444"/>
-  <text x="388" y="823" font-size="10" fill="#555">Platform Admin (final gate)</text>
-
-  <rect x="550" y="812" width="12" height="12" rx="2" fill="#16a34a"/>
-  <text x="568" y="823" font-size="10" fill="#555">Positive outcome</text>
-
-  <rect x="40" y="838" width="30" height="10" rx="2" fill="#fffbeb" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,2"/>
-  <text x="78" y="848" font-size="10" fill="#555">Conditional step (only for high/critical risk)</text>
-
-  <text x="40" y="868" font-size="10" fill="#555">Credential / server details are stored as a secret reference — never raw values. Risk tier is set by Platform Admin on tool/KB creation.</text>
-  <text x="40" y="882" font-size="10" fill="#555">For agents with long-term memory or critical tools, Tool Owner and Data Owner steps are inserted between Project Owner and Platform Admin.</text>
+<svg viewBox="0 0 860 1060" xmlns="http://www.w3.org/2000/svg" role="img" font-family="system-ui, -apple-system, sans-serif">
+  <title>Guardian AI Platform — Approval Workflows</title>
+  <desc>Tool lifecycle (registration → org approval → gateway deploy → project grant) and Agent lifecycle (author wizard → dual approval → AgentCore deploy).</desc>
 
   <defs>
     <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#999"/>
+      <path d="M0,0 L0,6 L8,3 z" fill="#888"/>
     </marker>
     <marker id="arr-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/>
@@ -203,5 +12,298 @@
     <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="#16a34a"/>
     </marker>
+    <marker id="arr-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#d97706"/>
+    </marker>
+    <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#2563eb"/>
+    </marker>
   </defs>
+
+  <!-- Background -->
+  <rect width="860" height="1060" fill="#f8f9fa" rx="12"/>
+
+  <!-- ═══════════════════════════════════════════════════════
+       PART 1 — TOOL LIFECYCLE
+       ═══════════════════════════════════════════════════════ -->
+  <rect x="20" y="16" width="820" height="32" rx="8" fill="#dbeafe"/>
+  <text x="430" y="37" text-anchor="middle" font-size="13" font-weight="700" fill="#1e40af">PART 1 — Org Tool Lifecycle: Registration → Approval → Gateway Deploy → Project Grant</text>
+
+  <!-- Status labels across top -->
+  <text x="76"  y="68" text-anchor="middle" font-size="9" font-weight="700" fill="#6366f1">ORG ADMIN</text>
+  <text x="245" y="68" text-anchor="middle" font-size="9" font-weight="700" fill="#d97706">ORG ADMIN APPROVES</text>
+  <text x="430" y="68" text-anchor="middle" font-size="9" font-weight="700" fill="#2563eb">DEPLOY TO GATEWAY</text>
+  <text x="630" y="68" text-anchor="middle" font-size="9" font-weight="700" fill="#16a34a">GRANT TO PROJECT</text>
+
+  <!-- Step 1: Register Tool -->
+  <rect x="20" y="78" width="115" height="90" rx="8" fill="#fff" stroke="#6366f1" stroke-width="1.5"/>
+  <rect x="20" y="78" width="115" height="8" rx="8" fill="#6366f1"/>
+  <rect x="20" y="82" width="115" height="4" fill="#6366f1"/>
+  <text x="77" y="100" text-anchor="middle" font-size="10" font-weight="700" fill="#6366f1">REGISTER TOOL</text>
+  <text x="77" y="114" text-anchor="middle" font-size="9" fill="#444">Discover Lambda /</text>
+  <text x="77" y="126" text-anchor="middle" font-size="9" fill="#444">API Gateway via</text>
+  <text x="77" y="138" text-anchor="middle" font-size="9" fill="#444">inventory scan</text>
+  <text x="77" y="152" text-anchor="middle" font-size="9" fill="#888">POST /logical-tools</text>
+  <!-- status pill -->
+  <rect x="30" y="158" width="95" height="14" rx="4" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1"/>
+  <text x="77" y="169" text-anchor="middle" font-size="8" fill="#475569">approval_status: PENDING</text>
+
+  <line x1="135" y1="123" x2="162" y2="123" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="148" y="117" text-anchor="middle" font-size="8" fill="#888">auto</text>
+
+  <!-- Step 2: Auto-create approval request -->
+  <rect x="162" y="78" width="130" height="90" rx="8" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+  <rect x="162" y="78" width="130" height="8" rx="8" fill="#d97706"/>
+  <rect x="162" y="82" width="130" height="4" fill="#d97706"/>
+  <text x="227" y="100" text-anchor="middle" font-size="10" font-weight="700" fill="#92400e">APPROVAL REQUEST</text>
+  <text x="227" y="114" text-anchor="middle" font-size="9" fill="#444">tool_approval_request</text>
+  <text x="227" y="126" text-anchor="middle" font-size="9" fill="#444">row auto-created</text>
+  <text x="227" y="140" text-anchor="middle" font-size="9" fill="#555">Org Admin reviews in</text>
+  <text x="227" y="152" text-anchor="middle" font-size="9" fill="#555">Approvals queue</text>
+  <!-- endpoint -->
+  <rect x="168" y="158" width="118" height="14" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1"/>
+  <text x="227" y="169" text-anchor="middle" font-size="8" fill="#92400e">POST /approvals/:id/decision</text>
+
+  <!-- Decision diamond: approve/reject -->
+  <line x1="292" y1="123" x2="330" y2="123" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <polygon points="355,98 395,123 355,148 315,123" fill="#fff" stroke="#d97706" stroke-width="1.5"/>
+  <text x="355" y="119" text-anchor="middle" font-size="9" font-weight="700" fill="#d97706">DECISION</text>
+  <text x="355" y="131" text-anchor="middle" font-size="8" fill="#555">approve</text>
+  <text x="355" y="141" text-anchor="middle" font-size="8" fill="#555">/ reject</text>
+
+  <!-- Reject → REJECTED pill -->
+  <line x1="355" y1="148" x2="355" y2="182" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arr-red)"/>
+  <text x="362" y="168" font-size="8" fill="#ef4444">reject</text>
+  <rect x="305" y="182" width="100" height="22" rx="5" fill="#fee2e2" stroke="#ef4444" stroke-width="1.2"/>
+  <text x="355" y="197" text-anchor="middle" font-size="9" font-weight="700" fill="#b91c1c">REJECTED — stays PENDING</text>
+
+  <!-- Approve → APPROVED -->
+  <line x1="395" y1="123" x2="435" y2="123" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr-green)"/>
+  <text x="415" y="117" text-anchor="middle" font-size="8" fill="#16a34a">approve</text>
+
+  <!-- Step 3: APPROVED → Deploy -->
+  <rect x="435" y="78" width="155" height="90" rx="8" fill="#fff" stroke="#2563eb" stroke-width="1.5"/>
+  <rect x="435" y="78" width="155" height="8" rx="8" fill="#2563eb"/>
+  <rect x="435" y="82" width="155" height="4" fill="#2563eb"/>
+  <text x="512" y="100" text-anchor="middle" font-size="10" font-weight="700" fill="#1e40af">DEPLOY TO GATEWAY</text>
+  <text x="512" y="114" text-anchor="middle" font-size="9" fill="#444">POST /deploy-to-gateway</text>
+  <text x="512" y="128" text-anchor="middle" font-size="9" fill="#555">LAMBDA: direct target</text>
+  <text x="512" y="140" text-anchor="middle" font-size="9" fill="#555">API_GW: wrapper λ deploy</text>
+  <text x="512" y="152" text-anchor="middle" font-size="9" fill="#555">ensureGateway → CreateGatewayTarget</text>
+  <rect x="440" y="158" width="145" height="14" rx="4" fill="#dbeafe" stroke="#2563eb" stroke-width="1"/>
+  <text x="512" y="169" text-anchor="middle" font-size="8" fill="#1e40af">deployment_status: ACTIVE on ETD</text>
+
+  <line x1="590" y1="123" x2="620" y2="123" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 4: Grant to Project -->
+  <rect x="620" y="78" width="155" height="90" rx="8" fill="#fff" stroke="#16a34a" stroke-width="1.5"/>
+  <rect x="620" y="78" width="155" height="8" rx="8" fill="#16a34a"/>
+  <rect x="620" y="82" width="155" height="4" fill="#16a34a"/>
+  <text x="697" y="100" text-anchor="middle" font-size="10" font-weight="700" fill="#15803d">GRANT TO PROJECT</text>
+  <text x="697" y="114" text-anchor="middle" font-size="9" fill="#444">POST /grants</text>
+  <text x="697" y="126" text-anchor="middle" font-size="9" fill="#555">project_tool_grants row</text>
+  <text x="697" y="138" text-anchor="middle" font-size="9" fill="#555">status = ACTIVE</text>
+  <text x="697" y="150" text-anchor="middle" font-size="9" fill="#555">Appears in Author Wizard</text>
+  <rect x="626" y="158" width="143" height="14" rx="4" fill="#dcfce7" stroke="#16a34a" stroke-width="1"/>
+  <text x="697" y="169" text-anchor="middle" font-size="8" fill="#15803d">GET /project-tools → active grants</text>
+
+  <!-- Part 1 status flow bar -->
+  <rect x="20" y="188" width="755" height="22" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="398" y="203" text-anchor="middle" font-size="9" fill="#475569">approval_status:  PENDING  →  APPROVED  ·  deployment_status:  NOT_DEPLOYED  →  ACTIVE  ·  project_tool_grants:  ACTIVE</text>
+
+  <!-- Divider -->
+  <line x1="20" y1="222" x2="840" y2="222" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="6,4"/>
+
+  <!-- ═══════════════════════════════════════════════════════
+       PART 2 — AGENT LIFECYCLE
+       ═══════════════════════════════════════════════════════ -->
+  <rect x="20" y="232" width="820" height="32" rx="8" fill="#e8f0fe"/>
+  <text x="430" y="253" text-anchor="middle" font-size="13" font-weight="700" fill="#1a1a2e">PART 2 — Agent Lifecycle: Author Wizard → Dual Approval → AgentCore Deploy</text>
+
+  <!-- Lane headers -->
+  <text x="100" y="280" text-anchor="middle" font-size="9" font-weight="700" fill="#6366f1">AGENT AUTHOR</text>
+  <text x="320" y="280" text-anchor="middle" font-size="9" font-weight="700" fill="#d97706">BUSINESS OWNER</text>
+  <text x="530" y="280" text-anchor="middle" font-size="9" font-weight="700" fill="#ef4444">PLATFORM ADMIN</text>
+  <text x="730" y="280" text-anchor="middle" font-size="9" font-weight="700" fill="#16a34a">OUTCOME</text>
+
+  <!-- Lane dividers -->
+  <line x1="212" y1="268" x2="212" y2="890" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4,4"/>
+  <line x1="425" y1="268" x2="425" y2="890" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4,4"/>
+  <line x1="635" y1="268" x2="635" y2="890" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- STEP A: Author Wizard -->
+  <rect x="24" y="292" width="175" height="130" rx="8" fill="#fff" stroke="#6366f1" stroke-width="1.5"/>
+  <rect x="24" y="292" width="175" height="8" rx="8" fill="#6366f1"/>
+  <rect x="24" y="296" width="175" height="4" fill="#6366f1"/>
+  <text x="111" y="314" text-anchor="middle" font-size="10" font-weight="700" fill="#6366f1">AUTHOR WIZARD (6 steps)</text>
+  <text x="111" y="328" text-anchor="middle" font-size="9" fill="#444">1. Template  2. Prompt (name + system)</text>
+  <text x="111" y="341" text-anchor="middle" font-size="9" fill="#444">3. Tools (active project grants only)</text>
+  <text x="111" y="354" text-anchor="middle" font-size="9" fill="#444">4. Config (model, risk_tier)</text>
+  <text x="111" y="367" text-anchor="middle" font-size="9" fill="#444">5. Deploy (generate Strands code)</text>
+  <text x="111" y="380" text-anchor="middle" font-size="9" fill="#444">6. Review → Submit</text>
+  <rect x="30" y="386" width="163" height="14" rx="4" fill="#f0f4ff" stroke="#6366f1" stroke-width="1"/>
+  <text x="111" y="397" text-anchor="middle" font-size="8" fill="#6366f1">POST /api/agents/publish</text>
+  <text x="111" y="412" text-anchor="middle" font-size="8" fill="#888">risk_tier: low | medium | high | critical</text>
+
+  <line x1="111" y1="422" x2="111" y2="448" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- SUBMITTED status -->
+  <rect x="34" y="448" width="155" height="44" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="111" y="466" text-anchor="middle" font-size="11" font-weight="700" fill="#475569">SUBMITTED</text>
+  <text x="111" y="480" text-anchor="middle" font-size="9" fill="#888">agent.status = SUBMITTED</text>
+  <text x="111" y="490" text-anchor="middle" font-size="8" fill="#888">2 approval tasks auto-created</text>
+
+  <line x1="189" y1="470" x2="225" y2="470" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="207" y="463" text-anchor="middle" font-size="8" fill="#888">task 1</text>
+
+  <!-- STEP B: Business Owner approval -->
+  <rect x="225" y="440" width="180" height="100" rx="8" fill="#fff" stroke="#d97706" stroke-width="1.5"/>
+  <rect x="225" y="440" width="180" height="8" rx="8" fill="#d97706"/>
+  <rect x="225" y="444" width="180" height="4" fill="#d97706"/>
+  <text x="315" y="462" text-anchor="middle" font-size="10" font-weight="700" fill="#92400e">BUSINESS OWNER</text>
+  <text x="315" y="476" text-anchor="middle" font-size="9" fill="#444">approver_type = business_owner</text>
+  <text x="315" y="489" text-anchor="middle" font-size="9" fill="#555">Reviews purpose, tools used,</text>
+  <text x="315" y="501" text-anchor="middle" font-size="9" fill="#555">data classification, risk tier</text>
+  <rect x="231" y="512" width="168" height="14" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1"/>
+  <text x="315" y="523" text-anchor="middle" font-size="8" fill="#92400e">POST /api/approvals/:taskId/decision</text>
+
+  <!-- Business owner reject -->
+  <line x1="225" y1="490" x2="188" y2="490" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#arr-red)"/>
+  <text x="206" y="483" text-anchor="middle" font-size="8" fill="#ef4444">reject</text>
+
+  <line x1="315" y1="540" x2="315" y2="560" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="322" y="553" font-size="8" fill="#16a34a">approve</text>
+
+  <!-- BOTH MUST APPROVE note -->
+  <rect x="225" y="560" width="180" height="34" rx="6" fill="#fef9c3" stroke="#d97706" stroke-width="1" stroke-dasharray="4,2"/>
+  <text x="315" y="575" text-anchor="middle" font-size="9" font-weight="700" fill="#92400e">Both must approve</text>
+  <text x="315" y="588" text-anchor="middle" font-size="8" fill="#555">Either rejection → REJECTED immediately</text>
+
+  <!-- arrow to platform admin column -->
+  <line x1="405" y1="490" x2="440" y2="490" stroke="#888" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="422" y="483" text-anchor="middle" font-size="8" fill="#888">task 2</text>
+
+  <!-- STEP C: Platform Admin approval -->
+  <rect x="440" y="440" width="180" height="100" rx="8" fill="#fff" stroke="#ef4444" stroke-width="1.5"/>
+  <rect x="440" y="440" width="180" height="8" rx="8" fill="#ef4444"/>
+  <rect x="440" y="444" width="180" height="4" fill="#ef4444"/>
+  <text x="530" y="462" text-anchor="middle" font-size="10" font-weight="700" fill="#b91c1c">PLATFORM ADMIN</text>
+  <text x="530" y="476" text-anchor="middle" font-size="9" fill="#444">approver_type = platform_admin</text>
+  <text x="530" y="489" text-anchor="middle" font-size="9" fill="#555">Reviews security, compliance,</text>
+  <text x="530" y="501" text-anchor="middle" font-size="9" fill="#555">deployment eligibility</text>
+  <rect x="446" y="512" width="168" height="14" rx="4" fill="#fee2e2" stroke="#ef4444" stroke-width="1"/>
+  <text x="530" y="523" text-anchor="middle" font-size="8" fill="#b91c1c">POST /api/approvals/:taskId/decision</text>
+
+  <!-- Platform admin reject -->
+  <line x1="440" y1="490" x2="408" y2="490" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="3,2" marker-end="url(#arr-red)"/>
+
+  <line x1="530" y1="540" x2="530" y2="560" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr-green)"/>
+
+  <!-- Decision point: both approved? -->
+  <polygon points="530,560 580,590 530,620 480,590" fill="#fff" stroke="#334155" stroke-width="1.5"/>
+  <text x="530" y="586" text-anchor="middle" font-size="9" font-weight="700" fill="#334155">BOTH</text>
+  <text x="530" y="598" text-anchor="middle" font-size="9" font-weight="700" fill="#334155">APPROVED?</text>
+
+  <!-- Reject path from diamond -->
+  <line x1="480" y1="590" x2="410" y2="590" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arr-red)"/>
+  <text x="445" y="583" text-anchor="middle" font-size="8" fill="#ef4444">No</text>
+
+  <!-- REJECTED box -->
+  <rect x="245" y="668" width="165" height="42" rx="8" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="327" y="686" text-anchor="middle" font-size="11" font-weight="700" fill="#b91c1c">REJECTED</text>
+  <text x="327" y="700" text-anchor="middle" font-size="9" fill="#b91c1c">agent.status = REJECTED</text>
+  <text x="327" y="712" text-anchor="middle" font-size="8" fill="#888">author notified via comments field</text>
+
+  <!-- connect reject path down -->
+  <line x1="410" y1="590" x2="327" y2="590" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2"/>
+  <line x1="327" y1="590" x2="327" y2="668" stroke="#ef4444" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr-red)"/>
+
+  <!-- Approve path from diamond -->
+  <line x1="580" y1="590" x2="650" y2="590" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr-green)"/>
+  <text x="615" y="583" text-anchor="middle" font-size="8" fill="#16a34a">Yes</text>
+
+  <!-- APPROVED box -->
+  <rect x="650" y="566" width="175" height="50" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="737" y="587" text-anchor="middle" font-size="11" font-weight="700" fill="#15803d">APPROVED</text>
+  <text x="737" y="601" text-anchor="middle" font-size="9" fill="#15803d">agent.status = APPROVED</text>
+  <text x="737" y="613" text-anchor="middle" font-size="8" fill="#15803d">Deploy button unblocked</text>
+
+  <line x1="737" y1="616" x2="737" y2="642" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr-green)"/>
+
+  <!-- Deploy flow -->
+  <rect x="645" y="642" width="185" height="130" rx="8" fill="#fff" stroke="#2563eb" stroke-width="1.5"/>
+  <rect x="645" y="642" width="185" height="8" rx="8" fill="#2563eb"/>
+  <rect x="645" y="646" width="185" height="4" fill="#2563eb"/>
+  <text x="737" y="664" text-anchor="middle" font-size="10" font-weight="700" fill="#1e40af">AGENTCORE DEPLOY</text>
+  <text x="737" y="678" text-anchor="middle" font-size="9" fill="#444">POST /agents/:id/deploy</text>
+  <text x="737" y="691" text-anchor="middle" font-size="9" fill="#555">1. Generate Strands agent.py</text>
+  <text x="737" y="703" text-anchor="middle" font-size="9" fill="#555">2. Upload to S3</text>
+  <text x="737" y="715" text-anchor="middle" font-size="9" fill="#555">3. CreateAgentRuntime → poll READY</text>
+  <text x="737" y="727" text-anchor="middle" font-size="9" fill="#555">4. CreateAgentRuntimeEndpoint</text>
+  <text x="737" y="739" text-anchor="middle" font-size="9" fill="#555">5. InvokeAgentRuntimeCommand</text>
+  <rect x="651" y="748" width="173" height="18" rx="4" fill="#dbeafe" stroke="#2563eb" stroke-width="1"/>
+  <text x="737" y="761" text-anchor="middle" font-size="8" fill="#1e40af">deployment_status: deploying → DEPLOYED</text>
+
+  <line x1="737" y1="772" x2="737" y2="798" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arr-green)"/>
+
+  <!-- DEPLOYED outcome -->
+  <rect x="650" y="798" width="175" height="42" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="737" y="816" text-anchor="middle" font-size="11" font-weight="700" fill="#1e40af">DEPLOYED</text>
+  <text x="737" y="830" text-anchor="middle" font-size="9" fill="#1e40af">agent_core_endpoint_id stored</text>
+  <text x="737" y="842" text-anchor="middle" font-size="8" fill="#2563eb">agent_environment_deployments row</text>
+
+  <!-- GET /api/approvals note -->
+  <rect x="24" y="610" width="190" height="44" rx="6" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1"/>
+  <text x="119" y="626" text-anchor="middle" font-size="9" font-weight="700" fill="#0369a1">GET /api/approvals</text>
+  <text x="119" y="638" text-anchor="middle" font-size="8" fill="#0369a1">Returns tool + agent tasks</text>
+  <text x="119" y="650" text-anchor="middle" font-size="8" fill="#555">taskCategory: agent_approval | tool_registration</text>
+
+  <!-- API approvals endpoint -->
+  <rect x="24" y="665" width="190" height="44" rx="6" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1"/>
+  <text x="119" y="681" text-anchor="middle" font-size="9" font-weight="700" fill="#0369a1">POST /api/approvals/:taskId/decision</text>
+  <text x="119" y="693" text-anchor="middle" font-size="8" fill="#555">body: { decision: "approve"|"reject",</text>
+  <text x="119" y="705" text-anchor="middle" font-size="8" fill="#555">        comments: "..." }</text>
+
+  <!-- Data model note -->
+  <rect x="24" y="720" width="580" height="80" rx="8" fill="#f9fafb" stroke="#e2e8f0" stroke-width="1.5"/>
+  <text x="40" y="738" font-size="10" font-weight="700" fill="#334155">DB Tables (agent flow)</text>
+  <text x="40" y="754" font-size="9" fill="#475569">agents: id, project_id, org_id, name, system_prompt, model_id, status, authored_via, risk_tier, created_by</text>
+  <text x="40" y="768" font-size="9" fill="#475569">agent_approval_requests: id, agent_id, approver_type (business_owner|platform_admin), status, risk_tier, comments</text>
+  <text x="40" y="782" font-size="9" fill="#475569">agent_environment_deployments: id, agent_id, environment_id, deployment_status, agent_core_endpoint_id, s3_code_location</text>
+  <text x="40" y="796" font-size="9" fill="#475569">status flow: DRAFT → SUBMITTED → APPROVED | REJECTED → deploying → DEPLOYED</text>
+
+  <!-- ═══════════════════════════════════════════════════════
+       LEGEND
+       ═══════════════════════════════════════════════════════ -->
+  <rect x="20" y="860" width="820" height="188" rx="8" fill="#fff" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="40" y="880" font-size="11" font-weight="700" fill="#334155">Legend &amp; Security Notes</text>
+
+  <!-- swatches -->
+  <rect x="40"  y="892" width="12" height="12" rx="2" fill="#6366f1"/>
+  <text x="58"  y="903" font-size="9" fill="#555">Agent Author / Org Admin</text>
+
+  <rect x="200" y="892" width="12" height="12" rx="2" fill="#d97706"/>
+  <text x="218" y="903" font-size="9" fill="#555">Business Owner approval</text>
+
+  <rect x="380" y="892" width="12" height="12" rx="2" fill="#ef4444"/>
+  <text x="398" y="903" font-size="9" fill="#555">Platform Admin (final gate)</text>
+
+  <rect x="570" y="892" width="12" height="12" rx="2" fill="#16a34a"/>
+  <text x="588" y="903" font-size="9" fill="#555">Positive / success outcome</text>
+
+  <rect x="40" y="912" width="12" height="12" rx="2" fill="#2563eb"/>
+  <text x="58" y="923" font-size="9" fill="#555">Deploy / infra step</text>
+
+  <rect x="200" y="912" width="22" height="12" rx="2" fill="#fef9c3" stroke="#d97706" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="228" y="923" font-size="9" fill="#555">Both approvers required (AND gate)</text>
+
+  <!-- Security notes -->
+  <text x="40" y="944" font-size="9" fill="#475569">▪  Credential refs must be secret names only — never raw values. UI validates against /AKIA|BEGIN|password|token-value/i.</text>
+  <text x="40" y="958" font-size="9" fill="#475569">▪  Deployment is blocked until agent.status = APPROVED (enforced in POST /agents/:id/deploy route).</text>
+  <text x="40" y="972" font-size="9" fill="#475569">▪  Both business_owner AND platform_admin tasks must resolve to "approved" before the agent flips to APPROVED.</text>
+  <text x="40" y="986" font-size="9" fill="#475569">▪  Rejecting either task immediately sets agent.status = REJECTED; further decisions are ignored.</text>
+  <text x="40" y="1000" font-size="9" fill="#475569">▪  ETD environment_id must match the target environment (enforced in deploy route; no cross-env resource reuse).</text>
+  <text x="40" y="1014" font-size="9" fill="#475569">▪  No AWS account IDs, role ARNs, model IDs, or gateway IDs are hardcoded — all resolved at runtime from DB config.</text>
+  <text x="40" y="1028" font-size="9" fill="#475569">▪  API: GET /api/approvals returns tool + agent tasks; taskCategory field distinguishes them.</text>
+  <text x="40" y="1044" font-size="9" fill="#475569">▪  Tool lifecycle: PENDING → APPROVED (org approval) → ACTIVE (gateway deploy) → project_tool_grants status=ACTIVE (grant).</text>
 </svg>
